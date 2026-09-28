@@ -5,7 +5,8 @@ access points, servidores e telefonia.
 
 ## Estado atual
 
-Primeira fase: **inventário**. A interface é organizada por camadas; a primeira pronta é a
+Primeira fase: **inventário**. A interface é organizada por camadas. Prontas até agora:
+
 **Layer 4 · Rede WAN**:
 
 - inventário dos links de cada site: operadora, circuito, tecnologia, banda, papel
@@ -13,6 +14,14 @@ Primeira fase: **inventário**. A interface é organizada por camadas; a primeir
   porta SD-WAN e VLANs internas;
 - topologia animada (operadoras → SD-WAN → core/LAN), painéis de tráfego, latência, alertas e
   disponibilidade, e um log de eventos.
+
+**Layer 3 · Switches** (`/lan`), com dados fictícios por enquanto:
+
+- uma linha por switch, agrupados por site (grupos recolhíveis), e um quadrado por porta;
+- cores: verde conectada, amarela em alerta ou 100 Mbps, vermelha desconectada, com erro ou
+  10 Mbps, cinza desabilitada; uplinks têm borda;
+- indicadores de saúde, filtro "somente com problemas", detalhes da porta e do switch ao clicar,
+  alertas e log de eventos.
 
 Status, tráfego, alertas e log ainda são **simulados** no navegador, só para visualizar a tela em
 funcionamento. Os campos `librenms_device_id` e `prtg_object_id` já existem para a próxima fase,
@@ -105,6 +114,7 @@ backend/
   tests/                testes da API
 frontend/
   src/wan/              tela Layer 4 · Rede WAN (topologia, painéis, simulação, formulário)
+  src/lan/              tela Layer 3 · Switches (grade de portas e dados fictícios)
   src/pages/            cadastro de sites
   src/components/       layout, relógio, modal
 docker-compose.yml
@@ -112,6 +122,7 @@ docker-compose.yml
 
 ## Próximos passos
 
-1. Demais camadas: firewall, switches, Wi-Fi, servidores e telefonia.
-2. Integração com LibreNMS e PRTG: trocar a telemetria simulada por dados reais.
-3. Autenticação de usuários.
+1. Cadastro real de switches e portas, alimentado pelo LibreNMS.
+2. Demais camadas: firewall, Wi-Fi, servidores e telefonia.
+3. Integração com LibreNMS e PRTG: trocar a telemetria simulada por dados reais.
+4. Autenticação de usuários.

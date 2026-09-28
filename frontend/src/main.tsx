@@ -8,6 +8,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { SitesPage } from "./pages/SitesPage";
+import { LanPage } from "./lan/LanPage";
 import { WanPage } from "./wan/WanPage";
 import "./styles.css";
 
@@ -18,6 +19,7 @@ createRoot(document.getElementById("root")!).render(
         <Route element={<Layout />}>
           <Route index element={<Navigate to="/wan" replace />} />
           <Route path="/wan" element={<WanPage />} />
+          <Route path="/lan" element={<LanPage />} />
           <Route path="/sites" element={<SitesPage />} />
           <Route path="*" element={<Navigate to="/wan" replace />} />
         </Route>
