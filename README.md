@@ -26,7 +26,9 @@ docker compose up -d --build
 ```
 
 - Interface web: http://localhost:8080
-- API e documentação interativa: http://localhost:8000/docs
+- API e documentação interativa: http://localhost:8010/docs
+
+As portas publicadas podem ser trocadas no `.env` (`API_PORT` e `WEB_PORT`). A API usa 8010 para não conflitar com o Infra Docs, que já ocupa a 8000.
 
 As migrações do banco rodam automaticamente quando o backend sobe.
 
@@ -39,7 +41,7 @@ cd backend
 python -m venv .venv && . .venv/bin/activate
 pip install -r requirements-dev.txt
 alembic upgrade head
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8010
 ```
 
 Testes (usam o banco de `TEST_DATABASE_URL`, por padrão `infraview_test` em localhost):
@@ -49,7 +51,7 @@ ruff check . && ruff format --check .
 pytest
 ```
 
-Frontend (o Vite encaminha `/api` para `http://localhost:8000`):
+Frontend (o Vite encaminha `/api` para `http://localhost:8010`):
 
 ```bash
 cd frontend

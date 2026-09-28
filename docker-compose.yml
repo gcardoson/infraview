@@ -21,14 +21,14 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8010}:8010"
 
   frontend:
     build: ./frontend
     depends_on:
       - backend
     ports:
-      - "8080:80"
+      - "${WEB_PORT:-8080}:80"
 
 volumes:
   db-data:
