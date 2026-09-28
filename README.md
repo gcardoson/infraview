@@ -27,6 +27,22 @@ que vai puxar dados reais das APIs do LibreNMS e do PRTG.
 | Frontend  | React 19, TypeScript, Vite                   |
 | Execução  | Docker Compose (frontend servido por nginx)  |
 
+## Painel de controle no Windows
+
+Para quem roda o servidor no próprio Windows (Docker dentro do Ubuntu/WSL), há um painel que
+dispensa os comandos do Docker: dê dois cliques em `tools\InfraView.bat`. Na primeira vez ele
+cria o atalho **InfraView** na área de trabalho.
+
+O painel mostra se o servidor está rodando e tem os botões **Iniciar**, **Parar**, **Reiniciar**,
+**Atualizar agora** e **Abrir no navegador**. Com "Atualizar automaticamente" ligado, ele verifica o
+GitHub a cada minuto e, se houver versão nova, baixa o código e reconstrói o servidor sozinho.
+Por padrão ele segue a versão mais recente publicada (qualquer branch); dá para fixar uma branch
+na lista "Versão do código".
+
+Alterações locais nos arquivos do projeto são descartadas na atualização, e o `.env` é mantido.
+A lógica fica em `tools/infraview.sh`, que também pode ser usado direto no Ubuntu:
+`bash tools/infraview.sh status|start|stop|restart|update`.
+
 ## Subindo com Docker
 
 ```bash
