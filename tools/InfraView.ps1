@@ -5,13 +5,32 @@
 # em tools/infraview.sh; esta janela so chama o script e mostra o resultado.
 #
 # Para abrir: duplo clique em tools\InfraView.bat (ou no atalho da area de trabalho,
-# criado na primeira execucao).
+# criado na primeira execucao). Ao fechar a janela, o painel continua na bandeja do
+# sistema, perto do relogio; o menu do botao direito tem os mesmos comandos.
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
 $ErrorActionPreference = 'Stop'
+
+# Esconde a janela de console do PowerShell, caso ela tenha aparecido.
+Add-Type -Namespace InfraView -Name Native -MemberDefinition @'
+[DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow();
+[DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+'@
+$consoleWindow = [InfraView.Native]::GetConsoleWindow()
+if ($consoleWindow -ne [IntPtr]::Zero) { [void][InfraView.Native]::ShowWindow($consoleWindow, 0) }
+
+# Uma unica instancia: se o painel ja estiver aberto, pede para ele aparecer e sai.
+$createdNew = $false
+$Mutex = New-Object System.Threading.Mutex($true, 'Local\InfraViewPainel', [ref]$createdNew)
+$ShowSignal = New-Object System.Threading.EventWaitHandle($false, 'AutoReset', 'Local\InfraViewPainelMostrar')
+if (-not $createdNew) {
+    [void]$ShowSignal.Set()
+    exit 0
+}
+
 $RepoWin = Split-Path -Parent $PSScriptRoot
 $ConfigDir = Join-Path $env:APPDATA 'InfraView'
 $ConfigFile = Join-Path $ConfigDir 'painel.json'
@@ -51,19 +70,26 @@ $ScriptWsl = "$RepoWsl/tools/infraview.sh"
 
 # ------------------------------------------------------------- atalho no desktop
 
+# O atalho abre o lancador .vbs, que inicia o PowerShell sem janela de console.
+$Launcher = Join-Path $PSScriptRoot 'InfraView.vbs'
+$Wscript = "$env:SystemRoot\System32\wscript.exe"
 $Shortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'InfraView.lnk'
-if (-not (Test-Path $Shortcut)) {
-    try {
-        $shell = New-Object -ComObject WScript.Shell
+try {
+    $shell = New-Object -ComObject WScript.Shell
+    $existing = if (Test-Path $Shortcut) { $shell.CreateShortcut($Shortcut) } else { $null }
+    if (-not $existing -or $existing.TargetPath -ne $Wscript) {
         $lnk = $shell.CreateShortcut($Shortcut)
-        $lnk.TargetPath = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
-        $lnk.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$PSCommandPath`""
+        $lnk.TargetPath = $Wscript
+        $lnk.Arguments = "`"$Launcher`""
         $lnk.WorkingDirectory = $RepoWin
         $lnk.IconLocation = "$env:SystemRoot\System32\shell32.dll,18"
         $lnk.Description = 'Painel do servidor local InfraView'
         $lnk.Save()
-    } catch { }
-}
+    }
+} catch { }
+
+# Se uma atualizacao trouxer uma versao nova deste painel, ele se reabre sozinho.
+$PanelHash = (Get-FileHash -Path $PSCommandPath -Algorithm SHA256).Hash
 
 # ------------------------------------------------ processos em segundo plano
 #
@@ -140,6 +166,24 @@ $Amber = [System.Drawing.Color]::FromArgb(242, 184, 75)
 $Red = [System.Drawing.Color]::FromArgb(255, 92, 92)
 $Gray = [System.Drawing.Color]::FromArgb(83, 98, 107)
 
+function New-DotIcon([System.Drawing.Color]$Color) {
+    $bitmap = New-Object System.Drawing.Bitmap 32, 32
+    $g = [System.Drawing.Graphics]::FromImage($bitmap)
+    $g.SmoothingMode = 'AntiAlias'
+    $g.Clear([System.Drawing.Color]::Transparent)
+    $g.FillEllipse((New-Object System.Drawing.SolidBrush $Dark), 1, 1, 30, 30)
+    $g.FillEllipse((New-Object System.Drawing.SolidBrush $Color), 7, 7, 18, 18)
+    $g.Dispose()
+    return [System.Drawing.Icon]::FromHandle($bitmap.GetHicon())
+}
+
+$Icons = @{
+    running = New-DotIcon $Green
+    busy    = New-DotIcon $Amber
+    problem = New-DotIcon $Red
+    stopped = New-DotIcon $Gray
+}
+
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'InfraView · Servidor local'
 $form.Size = New-Object System.Drawing.Size(860, 640)
@@ -148,6 +192,7 @@ $form.StartPosition = 'CenterScreen'
 $form.BackColor = $Dark
 $form.ForeColor = $Text
 $form.Font = New-Object System.Drawing.Font('Segoe UI', 9.5)
+$form.Icon = $Icons.stopped
 
 $title = New-Object System.Windows.Forms.Label
 $title.Text = 'INFRAVIEW'
@@ -250,12 +295,61 @@ $log.Anchor = 'Top, Bottom, Left, Right'
 $form.Controls.Add($log)
 
 $footer = New-Object System.Windows.Forms.Label
-$footer.Text = 'Fechar esta janela não desliga o servidor. Use Parar para desligar.'
+$footer.Text = 'Fechar esta janela mantém o painel na bandeja do sistema. Para sair, use Desligar no menu da bandeja.'
 $footer.ForeColor = $Muted
 $footer.AutoSize = $true
 $footer.Anchor = 'Bottom, Left'
 $footer.Location = New-Object System.Drawing.Point(20, 570)
 $form.Controls.Add($footer)
+
+# ------------------------------------------------------------ bandeja do sistema
+
+$menu = New-Object System.Windows.Forms.ContextMenuStrip
+function New-MenuItem([string]$Label) {
+    $item = New-Object System.Windows.Forms.ToolStripMenuItem $Label
+    [void]$menu.Items.Add($item)
+    return $item
+}
+$miOpen = New-MenuItem 'Abrir painel'
+$miOpen.Font = New-Object System.Drawing.Font($miOpen.Font, [System.Drawing.FontStyle]::Bold)
+$miBrowser = New-MenuItem 'Abrir no navegador'
+[void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
+$miStart = New-MenuItem 'Iniciar'
+$miStop = New-MenuItem 'Parar'
+$miRestart = New-MenuItem 'Reiniciar...'
+$miUpdate = New-MenuItem 'Atualizar'
+[void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
+$miShutdown = New-MenuItem 'Desligar...'
+
+$tray = New-Object System.Windows.Forms.NotifyIcon
+$tray.Icon = $Icons.stopped
+$tray.Text = 'InfraView'
+$tray.ContextMenuStrip = $menu
+$tray.Visible = $true
+
+function Show-Panel {
+    $form.Show()
+    if ($form.WindowState -eq 'Minimized') { $form.WindowState = 'Normal' }
+    $form.Activate()
+}
+
+function Show-Balloon([string]$Message, [string]$Kind = 'Info') {
+    if (-not $form.Visible) { $tray.ShowBalloonTip(4000, 'InfraView', $Message, $Kind) }
+}
+
+# Pergunta antes de comandos que derrubam o servidor. "Nao" e o botao padrao,
+# para um Enter ou clique apressado nao confirmar.
+function Confirm-Action([string]$Message) {
+    $owner = New-Object System.Windows.Forms.Form
+    $owner.TopMost = $true
+    try {
+        $answer = [System.Windows.Forms.MessageBox]::Show($owner, $Message, 'InfraView',
+            [System.Windows.Forms.MessageBoxButtons]::YesNo,
+            [System.Windows.Forms.MessageBoxIcon]::Question,
+            [System.Windows.Forms.MessageBoxDefaultButton]::Button2)
+    } finally { $owner.Dispose() }
+    return $answer -eq [System.Windows.Forms.DialogResult]::Yes
+}
 
 function Write-Log([string]$Line) {
     $log.AppendText(("[{0:HH:mm:ss}] {1}" -f (Get-Date), $Line) + [Environment]::NewLine)
@@ -284,22 +378,38 @@ function Update-Buttons {
     $btnUpdate.Enabled = $idle
     $branchBox.Enabled = $idle
     $btnOpen.Enabled = $running
+    $miStart.Enabled = $btnStart.Enabled
+    $miStop.Enabled = $btnStop.Enabled
+    $miRestart.Enabled = $btnRestart.Enabled
+    $miUpdate.Enabled = $btnUpdate.Enabled
+    $miBrowser.Enabled = $running
 }
 
 function Show-Status {
     $s = $script:State
+    $icon = $null
     if ($script:Busy) {
         $statusDot.ForeColor = $Amber
         $statusText.Text = $script:Busy.Label
+        $icon = $Icons.busy
     } elseif ($s.server -eq 'running') {
         $statusDot.ForeColor = $Green
         $statusText.Text = 'Servidor rodando'
+        $icon = $Icons.running
     } elseif ($s.server -eq 'partial') {
-        $statusDot.ForeColor = $Amber
+        $statusDot.ForeColor = $Red
         $statusText.Text = 'Servidor com problema (algum container parado)'
+        $icon = $Icons.problem
     } elseif ($s.server) {
         $statusDot.ForeColor = $Gray
         $statusText.Text = 'Servidor parado'
+        $icon = $Icons.stopped
+    }
+    if ($icon) {
+        $tray.Icon = $icon
+        $form.Icon = $icon
+        $tip = "InfraView: $($statusText.Text)"
+        $tray.Text = $tip.Substring(0, [Math]::Min(63, $tip.Length))
     }
     $parts = @()
     if ($s.version) { $parts += "Versão: $($s.branch) @ $($s.version)" }
@@ -323,11 +433,57 @@ function Request-Status {
     if (-not $script:StatusTask) { $script:StatusTask = Start-WslTask @('status') 'status' }
 }
 
-$btnStart.Add_Click({ Start-Action 'Iniciando o servidor...' @('start') { Start-KeepAlive } })
-$btnStop.Add_Click({ Start-Action 'Parando o servidor...' @('stop') })
-$btnRestart.Add_Click({ Start-Action 'Reiniciando o servidor...' @('restart') { Start-KeepAlive } })
-$btnUpdate.Add_Click({ Start-Action 'Atualizando o código...' @('update', (Get-SelectedBranch)) })
-$btnOpen.Add_Click({ Start-Process $(if ($script:State.url) { $script:State.url } else { 'http://localhost:8080' }) })
+$script:Exiting = $false      # true quando o usuario escolheu Desligar
+$script:ExitAfterTask = $false
+
+function Invoke-Start { Start-Action 'Iniciando o servidor...' @('start') { Start-KeepAlive } }
+function Invoke-Stop { Start-Action 'Parando o servidor...' @('stop') }
+function Invoke-Update { Start-Action 'Atualizando o código...' @('update', (Get-SelectedBranch)) }
+function Invoke-Browser { Start-Process $(if ($script:State.url) { $script:State.url } else { 'http://localhost:8080' }) }
+
+function Invoke-Restart {
+    if ($script:Busy) { return }
+    if (Confirm-Action "Reiniciar o servidor InfraView?`n`nEle fica fora do ar por alguns instantes.") {
+        Start-Action 'Reiniciando o servidor...' @('restart') { Start-KeepAlive }
+    }
+}
+
+# Desligar: para o servidor (se estiver rodando) e fecha o painel.
+function Invoke-Shutdown {
+    if (-not (Confirm-Action "Desligar o servidor InfraView e fechar o painel?")) { return }
+    $running = $script:State.server -eq 'running' -or $script:State.server -eq 'partial'
+    if ($running -and -not $script:Busy) {
+        $script:ExitAfterTask = $true
+        Start-Action 'Desligando o servidor...' @('stop')
+    } elseif ($script:Busy) {
+        $script:ExitAfterTask = $true
+        Write-Log 'O painel fecha assim que a tarefa atual terminar.'
+    } else {
+        Exit-Panel
+    }
+}
+
+# Fecha o painel de verdade. Com -KeepServer (reabertura apos atualizar o painel),
+# mantem o processo que segura o Ubuntu ligado, para o servidor nao cair.
+function Exit-Panel([switch]$KeepServer) {
+    $script:Exiting = $true
+    if (-not $KeepServer) { Stop-KeepAlive }
+    $form.Close()
+}
+
+$btnStart.Add_Click({ Invoke-Start })
+$btnStop.Add_Click({ Invoke-Stop })
+$btnRestart.Add_Click({ Invoke-Restart })
+$btnUpdate.Add_Click({ Invoke-Update })
+$btnOpen.Add_Click({ Invoke-Browser })
+$miOpen.Add_Click({ Show-Panel })
+$miBrowser.Add_Click({ Invoke-Browser })
+$miStart.Add_Click({ Invoke-Start })
+$miStop.Add_Click({ Invoke-Stop })
+$miRestart.Add_Click({ Invoke-Restart })
+$miUpdate.Add_Click({ Invoke-Update })
+$miShutdown.Add_Click({ Invoke-Shutdown })
+$tray.Add_MouseDoubleClick({ Show-Panel })
 $branchBox.Add_SelectionChangeCommitted({ $Config.branch = Get-SelectedBranch; Save-Config })
 $autoBox.Add_CheckedChanged({ $Config.autoUpdate = $autoBox.Checked; Save-Config })
 
@@ -343,17 +499,36 @@ $timer.Add_Tick({
         if ($script:Busy.Process.HasExited) {
             foreach ($line in Read-NewLines $script:Busy -Flush) { Write-Log $line }
             $code = $script:Busy.Process.ExitCode
+            $label = $script:Busy.Label
             if ($code -ne 0) {
                 Write-Log "!! Terminou com erro (código $code). Veja as mensagens acima."
+                Show-Balloon "$label falhou. Abra o painel para ver o log." 'Error'
             } else {
                 Write-Log '== Concluído.'
+                if ($label -like 'Atualizando*') { Show-Balloon 'Servidor atualizado com a versão mais recente.' }
             }
-            if ($script:Busy.Label -like 'Parando*') { Stop-KeepAlive }
+            if ($label -like 'Parando*' -or $label -like 'Desligando*') { Stop-KeepAlive }
             $script:Busy = $null
+            if ($script:ExitAfterTask) {
+                Exit-Panel
+                return
+            }
             Request-Status
             Show-Status
+
+            # Painel atualizado pelo git: reabre com a versao nova.
+            $hash = (Get-FileHash -Path $PSCommandPath -Algorithm SHA256 -ErrorAction SilentlyContinue).Hash
+            if ($hash -and $hash -ne $PanelHash) {
+                Write-Log 'Nova versão do painel. Reabrindo...'
+                $script:Relaunch = $true
+                Exit-Panel -KeepServer
+                return
+            }
         }
     }
+
+    # Outra instancia pediu para mostrar a janela
+    if ($ShowSignal.WaitOne(0)) { Show-Panel }
 
     # Status (a cada ~5 s)
     if ($script:StatusTask -and $script:StatusTask.Process.HasExited) {
@@ -406,7 +581,29 @@ $form.Add_Shown({
     $timer.Start()
 })
 
-$form.Add_FormClosing({ $timer.Stop() })
+# O X da janela so esconde o painel; ele continua na bandeja.
+$script:TrayHintShown = $false
+$form.Add_FormClosing({
+    param($sender, $e)
+    if (-not $script:Exiting -and $e.CloseReason -eq [System.Windows.Forms.CloseReason]::UserClosing) {
+        $e.Cancel = $true
+        $form.Hide()
+        if (-not $script:TrayHintShown) {
+            $script:TrayHintShown = $true
+            $tray.ShowBalloonTip(4000, 'InfraView',
+                'O painel continua aqui na bandeja. Clique com o botão direito para os comandos.', 'Info')
+        }
+        return
+    }
+    $timer.Stop()
+    $tray.Visible = $false
+})
 
+$script:Relaunch = $false
 $ErrorActionPreference = 'Continue'
-[void]$form.ShowDialog()
+[System.Windows.Forms.Application]::Run($form)
+
+$tray.Dispose()
+$Mutex.ReleaseMutex()
+$Mutex.Dispose()
+if ($script:Relaunch) { Start-Process -FilePath $Wscript -ArgumentList "`"$Launcher`"" }

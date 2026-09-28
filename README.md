@@ -33,8 +33,12 @@ Para quem roda o servidor no próprio Windows (Docker dentro do Ubuntu/WSL), há
 dispensa os comandos do Docker: dê dois cliques em `tools\InfraView.bat`. Na primeira vez ele
 cria o atalho **InfraView** na área de trabalho.
 
-O painel mostra se o servidor está rodando e tem os botões **Iniciar**, **Parar**, **Reiniciar**,
-**Atualizar agora** e **Abrir no navegador**. Com "Atualizar automaticamente" ligado, ele verifica o
+O painel abre sem janela de console e mostra se o servidor está rodando, com os botões
+**Iniciar**, **Parar**, **Reiniciar**, **Atualizar agora** e **Abrir no navegador**. Fechar a janela
+só a esconde: o painel continua na bandeja do sistema, com um ícone que muda de cor conforme o
+estado (verde rodando, amarelo trabalhando, cinza parado, vermelho com problema). O menu do botão
+direito tem Abrir painel, Abrir no navegador, Iniciar, Parar, Reiniciar, Atualizar e **Desligar**,
+que para o servidor e fecha o painel. Reiniciar e Desligar pedem confirmação. Com "Atualizar automaticamente" ligado, ele verifica o
 GitHub a cada minuto e, se houver versão nova, baixa o código e reconstrói o servidor sozinho.
 Por padrão ele segue a versão mais recente publicada (qualquer branch); dá para fixar uma branch
 na lista "Versão do código".
