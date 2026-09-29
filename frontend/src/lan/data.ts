@@ -106,8 +106,8 @@ interface Blueprint {
   uplinks: number;
 }
 
-/* Switches are laid out in blocks of 24 ports; 48-port models take two rows. 8 and 12 ports are rare. */
-export const PORTS_PER_ROW = 24;
+/* The grid draws ports in blocks of 24 (48-port models show two blocks). 8 and 12 ports are rare. */
+export const PORTS_PER_BLOCK = 24;
 
 const SITE_BLUEPRINTS: Blueprint[][] = [
   [

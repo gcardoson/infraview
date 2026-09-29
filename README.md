@@ -17,8 +17,9 @@ Primeira fase: **inventário**. A interface é organizada por camadas. Prontas a
 
 **Layer 3 · Switches** (`/lan`), com dados fictícios por enquanto:
 
-- switches agrupados por site (grupos recolhíveis), um quadrado por porta, sempre em linhas de
-  24 portas: switches de 48 portas ocupam duas linhas; os uplinks ficam nas colunas U1–U4;
+- switches agrupados por site (grupos recolhíveis), um quadrado por porta, no formato do painel
+  do switch: ímpares em cima e pares embaixo (01/02 … 23/24); switches de 48 portas mostram dois
+  blocos de 24 lado a lado; os uplinks ficam nas colunas U1–U4;
 - cores: verde conectada, amarela em alerta ou 100 Mbps, vermelha desconectada, com erro ou
   10 Mbps, cinza desabilitada;
 - indicadores de saúde, filtro "somente com problemas", detalhes da porta e do switch ao clicar,

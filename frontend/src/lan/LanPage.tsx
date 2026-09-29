@@ -6,7 +6,7 @@ import {
   COLOR_LABEL,
   MAX_UPLINKS,
   type NetworkSwitch,
-  PORTS_PER_ROW,
+  PORTS_PER_BLOCK,
   type PortColor,
   type SwitchPort,
   buildNetwork,
@@ -20,17 +20,17 @@ import {
 const timeFormat = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 const COLORS: PortColor[] = ["ok", "warn", "crit", "off"];
 const NO_SWITCHES: NetworkSwitch[] = [];
-const COLUMNS = Array.from({ length: PORTS_PER_ROW }, (_, i) => i + 1);
-const UPLINK_COLUMNS = Array.from({ length: MAX_UPLINKS }, (_, i) => i + 1);
-const TOTAL_COLUMNS = 3 + PORTS_PER_ROW + 1 + MAX_UPLINKS;
+/* Faceplate layout: blocks of 24 ports as 12 columns, odd ports on top and even below (01/02, 03/04 … 23/24).
+   A 48-port switch shows two blocks side by side; uplinks follow in their own pair of columns. */
+const BLOCK_COLUMNS = PORTS_PER_BLOCK / 2;
+const BLOCKS = [0, 1];
+const BLOCK_CELLS = Array.from({ length: BLOCK_COLUMNS }, (_, i) => i);
+const UPLINK_CELLS = Array.from({ length: Math.ceil(MAX_UPLINKS / 2) }, (_, i) => i);
+const TOTAL_COLUMNS = 2 + BLOCKS.length * (BLOCK_COLUMNS + 1) + UPLINK_CELLS.length;
+const pad = (n: number) => String(n).padStart(2, "0");
 
-/* Access ports in blocks of 24 (a 48-port switch gets two rows); uplinks sit in their own columns on the first row. */
-function portRows(sw: NetworkSwitch) {
-  const access = sw.ports.filter((p) => !p.uplink);
-  const rows: SwitchPort[][] = [];
-  for (let i = 0; i < access.length; i += PORTS_PER_ROW) rows.push(access.slice(i, i + PORTS_PER_ROW));
-  return { rows: rows.length ? rows : [[]], uplinks: sw.ports.filter((p) => p.uplink) };
-}
+/* 1-based access port number shown at a given block, column and row (0 = top/odd, 1 = bottom/even). */
+const accessNumber = (block: number, column: number, row: number) => block * PORTS_PER_BLOCK + column * 2 + row + 1;
 
 interface Selection {
   switchId: string;
@@ -179,16 +179,20 @@ export function LanPage() {
                 <tr>
                   <th className="col-name">Switch / ativo</th>
                   <th className="col-health">Saúde</th>
-                  <th className="col-range">Portas</th>
-                  {COLUMNS.map((n) => (
-                    <th key={n} className="col-port">
-                      {String(n).padStart(2, "0")}
-                    </th>
-                  ))}
-                  <th className="col-gap" />
-                  {UPLINK_COLUMNS.map((n) => (
-                    <th key={n} className="col-port" title={`Uplink ${n}`}>
-                      U{n}
+                  {BLOCKS.map((b) => [
+                    ...BLOCK_CELLS.map((c) => (
+                      <th key={`${b}-${c}`} className="col-port stacked">
+                        {pad(accessNumber(b, c, 0))}
+                        <br />
+                        {pad(accessNumber(b, c, 1))}
+                      </th>
+                    )),
+                    <th key={`gap-${b}`} className="col-gap" />,
+                  ])}
+                  {UPLINK_CELLS.map((c) => (
+                    <th key={`u-${c}`} className="col-port stacked" title="Uplinks">
+                      U{c * 2 + 1}
+                      <br />U{c * 2 + 2}
                     </th>
                   ))}
                 </tr>
@@ -217,9 +221,10 @@ export function LanPage() {
                     {!isCollapsed &&
                       group.flatMap((sw) => {
                         const h = switchHealth(sw);
-                        const { rows, uplinks } = portRows(sw);
+                        const access = sw.ports.filter((p) => !p.uplink);
+                        const uplinks = sw.ports.filter((p) => p.uplink);
                         const selectedRow = selection?.switchId === sw.id ? " selected" : "";
-                        const square = (port: SwitchPort | undefined, key: number) => {
+                        const square = (port: SwitchPort | undefined, key: string) => {
                           if (!port) return <td key={key} className="col-port" />;
                           const color = portColor(port);
                           const selected = selection?.switchId === sw.id && selection.port === port.index;
@@ -234,39 +239,31 @@ export function LanPage() {
                             </td>
                           );
                         };
-                        return rows.map((row, r) => {
-                          const first = row[0]?.index ?? 1;
-                          const last = r * PORTS_PER_ROW + Math.max(row.length, 1);
-                          return (
-                            <tr
-                              key={`${sw.id}-${r}`}
-                              className={`switch-row${selectedRow}${r < rows.length - 1 ? " continues" : ""}`}
-                            >
-                              {r === 0 && (
-                                <>
-                                  <td className="col-name" rowSpan={rows.length}>
-                                    <button className="switch-name" onClick={() => setSelection({ switchId: sw.id, port: null })}>
-                                      <span className="mono">{sw.hostname}</span>
-                                      <span className="tag">{sw.role}</span>
-                                    </button>
-                                    <span className="switch-model muted">
-                                      {sw.model} · {sw.ports.filter((p) => !p.uplink).length} portas
-                                    </span>
-                                  </td>
-                                  <td className={`col-health mono ${healthClass(h)}`} rowSpan={rows.length}>
-                                    {h.toFixed(1)}%
-                                  </td>
-                                </>
-                              )}
-                              <td className="col-range mono muted">
-                                {String(first).padStart(2, "0")}–{String(last).padStart(2, "0")}
-                              </td>
-                              {COLUMNS.map((n) => square(row[n - 1], n))}
-                              <td className="col-gap" />
-                              {UPLINK_COLUMNS.map((n) => square(r === 0 ? uplinks[n - 1] : undefined, 100 + n))}
-                            </tr>
-                          );
-                        });
+                        return [0, 1].map((row) => (
+                          <tr key={`${sw.id}-${row}`} className={`switch-row${selectedRow}${row === 0 ? " continues" : ""}`}>
+                            {row === 0 && (
+                              <>
+                                <td className="col-name" rowSpan={2}>
+                                  <button className="switch-name" onClick={() => setSelection({ switchId: sw.id, port: null })}>
+                                    <span className="mono">{sw.hostname}</span>
+                                    <span className="tag">{sw.role}</span>
+                                  </button>
+                                  <span className="switch-model muted">
+                                    {sw.model} · {access.length} portas
+                                  </span>
+                                </td>
+                                <td className={`col-health mono ${healthClass(h)}`} rowSpan={2}>
+                                  {h.toFixed(1)}%
+                                </td>
+                              </>
+                            )}
+                            {BLOCKS.map((b) => [
+                              ...BLOCK_CELLS.map((c) => square(access[accessNumber(b, c, row) - 1], `${b}-${c}`)),
+                              <td key={`gap-${b}`} className="col-gap" />,
+                            ])}
+                            {UPLINK_CELLS.map((c) => square(uplinks[c * 2 + row], `u-${c}`))}
+                          </tr>
+                        ));
                       })}
                   </tbody>
                 );
@@ -277,7 +274,7 @@ export function LanPage() {
             )}
           </div>
           <p className="port-hint muted">
-            Cada linha tem 24 portas; switches de 48 portas ocupam duas linhas. As colunas U1–U4 são os uplinks. Passe o mouse sobre uma porta para ver os detalhes, clique para fixá-la no painel.
+            As portas seguem o painel do switch: ímpares em cima, pares embaixo; switches de 48 portas mostram dois blocos de 24 lado a lado, e U1–U4 são os uplinks. Passe o mouse sobre uma porta para ver os detalhes, clique para fixá-la no painel.
           </p>
         </section>
 

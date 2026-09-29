@@ -1497,3 +1497,29 @@ button.port-sq:hover,
   font-size: 0.66rem;
   margin-top: 0.1rem;
 }
+
+.port-table th.stacked {
+  line-height: 1.35;
+  vertical-align: bottom;
+}
+
+.port-table .col-port {
+  width: 24px;
+  min-width: 24px;
+}
+
+.port-table .switch-row td.col-port,
+.port-table .switch-row td.col-gap {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.port-table .switch-row.continues td.col-port,
+.port-table .switch-row.continues td.col-gap {
+  padding-top: 8px;
+}
+
+.port-table .switch-row:not(.continues) td.col-port,
+.port-table .switch-row:not(.continues) td.col-gap {
+  padding-bottom: 8px;
+}
