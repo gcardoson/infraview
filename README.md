@@ -7,6 +7,19 @@ access points, servidores e telefonia.
 
 Primeira fase: **inventário**. A interface é organizada por camadas. Prontas até agora:
 
+**Explorer** (`/explorer`, a tela inicial), com salas e racks fictícios por enquanto:
+
+- mapa escuro (Leaflet) com um marcador por site. O mapa base vem de serviços públicos e
+  gratuitos, sem chave de API (Esri e OpenStreetMap; a CARTO passou a exigir chave), tentados em ordem até um responder,
+  com seletor no canto do mapa; se a rede bloquear todos, ficam os contornos offline de países,
+  estados e rios (Natural Earth), servidos pelo próprio InfraView. Cada site aparece na posição cadastrada em Sites (latitude e longitude); aproximando, aparecem os
+  datacenters, salas técnicas e armários de rede do site;
+- busca por site, sala ou equipamento, indicadores de saúde e a lista de salas de cada site;
+- ao abrir uma sala (`/explorer/sala/<id>`): relógio e dados do controlador, sensores de presença,
+  porta, água e fumaça, log de eventos ao vivo, medidores e gráficos de 24 h (temperatura e umidade
+  no corredor frio e no interior, tensão, potência e consumo dos racks, CO₂ e PM2.5), quatro
+  câmeras simuladas e a elevação de cada rack.
+
 **Layer 4 · Rede WAN**:
 
 - inventário dos links de cada site: operadora, circuito, tecnologia, banda, papel
@@ -25,6 +38,16 @@ Primeira fase: **inventário**. A interface é organizada por camadas. Prontas a
   10 Mbps, cinza desabilitada;
 - indicadores de saúde, filtro "somente com problemas", detalhes da porta e do switch ao clicar,
   alertas e log de eventos.
+
+**Servidores** (`/servidores`), com dados fictícios por enquanto, organizada em três colunas por
+cluster de virtualização:
+
+- CPU: capacidade total do cluster (GHz, sockets, cores, threads, relação vCPU:pCPU) e, por host,
+  fabricante, modelo do processador, clock base e turbo, cores, threads, cache e uso recente;
+- memória: RAM instalada e máxima possível no cluster e por host, tipo (DDR3, DDR4, DDR5),
+  velocidade, módulos e o mapa de slots, destacando os slots livres;
+- armazenamento: capacidade, uso, provisionamento e overcommit, divisão por tipo (VMFS, NFS,
+  vSAN), baias do storage e a lista de datastores compartilhados e locais.
 
 Status, tráfego, alertas e log ainda são **simulados** no navegador, só para visualizar a tela em
 funcionamento. Os campos `librenms_device_id` e `prtg_object_id` já existem para a próxima fase,
@@ -112,12 +135,14 @@ backend/
   app/models.py         modelos: Site, Device, InternetLink
   app/schemas.py        validação de entrada e saída (Pydantic)
   app/routers/          rotas CRUD em /api/sites, /api/devices, /api/links
-  app/seed.py           dados de exemplo
+  app/seed.py           dados de exemplo (inclui coordenadas dos sites de exemplo)
   alembic/              migrações do banco
   tests/                testes da API
 frontend/
+  src/explorer/         Explorer: mapa dos sites, salas técnicas, painel da sala e racks
   src/wan/              tela Layer 4 · Rede WAN (topologia, painéis, simulação, formulário)
   src/lan/              tela Layer 3 · Switches (grade de portas e dados fictícios)
+  src/servers/          tela Servidores (CPU, memória e armazenamento do cluster)
   src/pages/            cadastro de sites
   src/components/       layout, relógio, modal
 docker-compose.yml
@@ -126,6 +151,6 @@ docker-compose.yml
 ## Próximos passos
 
 1. Cadastro real de switches e portas, alimentado pelo LibreNMS.
-2. Demais camadas: firewall, Wi-Fi, servidores e telefonia.
+2. Dados reais dos servidores via vCenter; demais camadas: firewall, Wi-Fi e telefonia.
 3. Integração com LibreNMS e PRTG: trocar a telemetria simulada por dados reais.
 4. Autenticação de usuários.

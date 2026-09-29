@@ -1,9 +1,10 @@
 """Load fictitious sample data so the interface has something to show.
 
-Usage: python -m app.seed   (does nothing if any site already exists)
+Usage: python -m app.seed   (if sites already exist, only fills missing coordinates of the sample sites)
 """
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
 from app.models import InternetLink, LinkRole, Site
@@ -16,6 +17,8 @@ SAMPLE = [
             "city": "Arcos",
             "state": "MG",
             "country": "Brasil",
+            "latitude": -20.2863,
+            "longitude": -45.5402,
         },
         "links": [
             {
@@ -64,7 +67,14 @@ SAMPLE = [
         ],
     },
     {
-        "site": {"code": "BR-MAT", "name": "Planta Matozinhos", "city": "Matozinhos", "state": "MG"},
+        "site": {
+            "code": "BR-MAT",
+            "name": "Planta Matozinhos",
+            "city": "Matozinhos",
+            "state": "MG",
+            "latitude": -19.5543,
+            "longitude": -44.0868,
+        },
         "links": [
             {
                 "provider": "Algar Telecom",
@@ -96,10 +106,26 @@ SAMPLE = [
 ]
 
 
+def fill_coordinates(session: Session) -> None:
+    """Give the sample sites a map position when they were created before sites had coordinates."""
+    filled = 0
+    for entry in SAMPLE:
+        data = entry["site"]
+        site = session.scalar(select(Site).where(Site.code == data["code"]))
+        if site is not None and site.latitude is None and site.longitude is None:
+            site.latitude, site.longitude = data["latitude"], data["longitude"]
+            filled += 1
+    session.commit()
+    if filled:
+        print(f"Coordenadas preenchidas em {filled} sites de exemplo.")
+    else:
+        print("Já existem sites cadastrados; nada foi alterado.")
+
+
 def main() -> None:
     with SessionLocal() as session:
         if session.scalar(select(Site.id).limit(1)) is not None:
-            print("Já existem sites cadastrados; nada foi alterado.")
+            fill_coordinates(session)
             return
         for entry in SAMPLE:
             site = Site(**entry["site"])
