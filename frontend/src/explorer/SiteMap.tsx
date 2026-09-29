@@ -1,7 +1,7 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useRef, useState } from "react";
-import { BASEMAPS, OFFLINE_ID, offlineLayer, saveBasemap, savedBasemap, tileLayer } from "./basemaps";
+import { BASEMAPS, labelsLayer, OFFLINE_ID, offlineLayer, saveBasemap, savedBasemap, tileLayer } from "./basemaps";
 import { type ExplorerSite, KIND_SHORT, roomHealth, worstHealth } from "./data";
 
 /* Dark Leaflet map with one marker per site and, once zoomed in, one per technical room. */
@@ -56,11 +56,14 @@ export function SiteMap({ sites, selectedSite, selectedRoom, onSelectSite, onSel
 
     // Tile providers: start with the saved one (or the first) and fall back down the list when blocked.
     let tiles: L.TileLayer | null = null;
+    let labels: L.TileLayer | null = null;
     let timer = 0;
     const select = (id: string, auto: boolean) => {
       window.clearTimeout(timer);
       if (tiles) m.removeLayer(tiles);
+      if (labels) m.removeLayer(labels);
       tiles = null;
+      labels = null;
       const index = BASEMAPS.findIndex((b) => b.id === id);
       if (index < 0) {
         setBase({ id: OFFLINE_ID, state: "ok" });
@@ -71,6 +74,7 @@ export function SiteMap({ sites, selectedSite, selectedRoom, onSelectSite, onSel
       let errors = 0;
       const giveUp = () => {
         if (loaded || tiles !== layer) return;
+        if (labels) m.removeLayer(labels);
         if (auto) select(BASEMAPS[index + 1]?.id ?? OFFLINE_ID, true);
         else setBase({ id, state: "failed" });
       };
@@ -82,6 +86,7 @@ export function SiteMap({ sites, selectedSite, selectedRoom, onSelectSite, onSel
       });
       timer = window.setTimeout(giveUp, LOAD_TIMEOUT_MS);
       tiles = layer.addTo(m);
+      labels = labelsLayer(BASEMAPS[index])?.addTo(m) ?? null;
       setBase({ id, state: "loading" });
     };
     selectBase.current = select;

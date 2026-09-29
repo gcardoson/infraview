@@ -10,7 +10,7 @@ Primeira fase: **inventário**. A interface é organizada por camadas. Prontas a
 **Explorer** (`/explorer`, a tela inicial), com salas e racks fictícios por enquanto:
 
 - mapa escuro (Leaflet) com um marcador por site. O mapa base vem de serviços públicos e
-  gratuitos, sem chave de API (CARTO, Esri, OpenStreetMap), tentados em ordem até um responder,
+  gratuitos, sem chave de API (Esri e OpenStreetMap; a CARTO passou a exigir chave), tentados em ordem até um responder,
   com seletor no canto do mapa; se a rede bloquear todos, ficam os contornos offline de países,
   estados e rios (Natural Earth), servidos pelo próprio InfraView. Cada site aparece na posição cadastrada em Sites (latitude e longitude); aproximando, aparecem os
   datacenters, salas técnicas e armários de rede do site;
