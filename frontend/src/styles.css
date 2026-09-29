@@ -1208,6 +1208,12 @@ fieldset .btn.small {
   letter-spacing: 0.02em;
 }
 
+.port-legend .port-sq,
+.state .port-sq {
+  width: 12px;
+  height: 12px;
+}
+
 .port-legend > span,
 .state {
   display: inline-flex;
@@ -1233,7 +1239,8 @@ fieldset .btn.small {
 .port-table {
   border-collapse: separate;
   border-spacing: 0;
-  width: 100%;
+  width: auto;
+  min-width: 100%;
 }
 
 .port-table th {
@@ -1255,7 +1262,7 @@ fieldset .btn.small {
   left: 0;
   background: var(--panel);
   z-index: 1;
-  min-width: 190px;
+  min-width: 210px;
   padding-right: 0.6rem;
 }
 
@@ -1279,8 +1286,8 @@ fieldset .btn.small {
 }
 
 .port-table .col-port {
-  width: 18px;
-  min-width: 18px;
+  width: 22px;
+  min-width: 22px;
   padding: 3px 1px;
   text-align: center;
 }
@@ -1288,8 +1295,8 @@ fieldset .btn.small {
 .port-table td.col-port:empty::after {
   content: "";
   display: inline-block;
-  width: 13px;
-  height: 13px;
+  width: 16px;
+  height: 16px;
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.025);
   vertical-align: middle;
@@ -1376,8 +1383,8 @@ fieldset .btn.small {
 
 .port-sq {
   display: inline-block;
-  width: 13px;
-  height: 13px;
+  width: 16px;
+  height: 16px;
   border-radius: 3px;
   border: none;
   padding: 0;
@@ -1451,4 +1458,42 @@ button.port-sq:hover,
 
 .panel-title .icon-btn {
   margin-left: auto;
+}
+
+.port-table .col-range {
+  font-size: 0.62rem;
+  padding: 0 0.6rem 0 0;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.port-table th.col-range {
+  text-align: right;
+}
+
+.port-table .col-gap {
+  width: 14px;
+  min-width: 14px;
+  padding: 0;
+}
+
+.port-table td.col-port,
+.port-table td.col-gap,
+.port-table td.col-range {
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+.switch-row.continues td {
+  border-bottom-color: transparent;
+}
+
+.port-table td.col-name {
+  vertical-align: middle;
+}
+
+.switch-model {
+  display: block;
+  font-size: 0.66rem;
+  margin-top: 0.1rem;
 }

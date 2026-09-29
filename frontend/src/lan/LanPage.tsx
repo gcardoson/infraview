@@ -4,8 +4,9 @@ import { api } from "../api";
 import { useResource } from "../components/useResource";
 import {
   COLOR_LABEL,
-  MAX_PORTS,
+  MAX_UPLINKS,
   type NetworkSwitch,
+  PORTS_PER_ROW,
   type PortColor,
   type SwitchPort,
   buildNetwork,
@@ -18,7 +19,18 @@ import {
 
 const timeFormat = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 const COLORS: PortColor[] = ["ok", "warn", "crit", "off"];
-const COLUMNS = Array.from({ length: MAX_PORTS }, (_, i) => i + 1);
+const NO_SWITCHES: NetworkSwitch[] = [];
+const COLUMNS = Array.from({ length: PORTS_PER_ROW }, (_, i) => i + 1);
+const UPLINK_COLUMNS = Array.from({ length: MAX_UPLINKS }, (_, i) => i + 1);
+const TOTAL_COLUMNS = 3 + PORTS_PER_ROW + 1 + MAX_UPLINKS;
+
+/* Access ports in blocks of 24 (a 48-port switch gets two rows); uplinks sit in their own columns on the first row. */
+function portRows(sw: NetworkSwitch) {
+  const access = sw.ports.filter((p) => !p.uplink);
+  const rows: SwitchPort[][] = [];
+  for (let i = 0; i < access.length; i += PORTS_PER_ROW) rows.push(access.slice(i, i + PORTS_PER_ROW));
+  return { rows: rows.length ? rows : [[]], uplinks: sw.ports.filter((p) => p.uplink) };
+}
 
 interface Selection {
   switchId: string;
@@ -61,7 +73,7 @@ export function LanPage() {
   const [params, setParams] = useSearchParams();
   const sites = useResource(useCallback(() => api.sites.list(), []));
   const network = useMemo(() => buildNetwork(sites.items), [sites.items]);
-  const { switches, log } = useLanSimulation(sites.loading ? [] : network);
+  const { switches, log } = useLanSimulation(sites.loading ? NO_SWITCHES : network);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [onlyProblems, setOnlyProblems] = useState(false);
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -167,9 +179,16 @@ export function LanPage() {
                 <tr>
                   <th className="col-name">Switch / ativo</th>
                   <th className="col-health">Saúde</th>
+                  <th className="col-range">Portas</th>
                   {COLUMNS.map((n) => (
                     <th key={n} className="col-port">
                       {String(n).padStart(2, "0")}
+                    </th>
+                  ))}
+                  <th className="col-gap" />
+                  {UPLINK_COLUMNS.map((n) => (
+                    <th key={n} className="col-port" title={`Uplink ${n}`}>
+                      U{n}
                     </th>
                   ))}
                 </tr>
@@ -181,7 +200,7 @@ export function LanPage() {
                 return (
                   <tbody key={first.siteId}>
                     <tr className="group-row">
-                      <td colSpan={2 + MAX_PORTS}>
+                      <td colSpan={TOTAL_COLUMNS}>
                         <button className="group-toggle" onClick={() => toggle(first.siteId)} aria-expanded={!isCollapsed}>
                           <span className="chevron">{isCollapsed ? "▸" : "▾"}</span>
                           <span className="group-name">
@@ -196,35 +215,58 @@ export function LanPage() {
                       </td>
                     </tr>
                     {!isCollapsed &&
-                      group.map((sw) => {
+                      group.flatMap((sw) => {
                         const h = switchHealth(sw);
-                        return (
-                          <tr key={sw.id} className={`switch-row${selection?.switchId === sw.id ? " selected" : ""}`}>
-                            <td className="col-name">
-                              <button className="switch-name" onClick={() => setSelection({ switchId: sw.id, port: null })}>
-                                <span className="mono">{sw.hostname}</span>
-                                <span className="tag">{sw.role}</span>
-                              </button>
+                        const { rows, uplinks } = portRows(sw);
+                        const selectedRow = selection?.switchId === sw.id ? " selected" : "";
+                        const square = (port: SwitchPort | undefined, key: number) => {
+                          if (!port) return <td key={key} className="col-port" />;
+                          const color = portColor(port);
+                          const selected = selection?.switchId === sw.id && selection.port === port.index;
+                          return (
+                            <td key={key} className="col-port">
+                              <button
+                                className={`port-sq ${color}${port.uplink ? " uplink" : ""}${selected ? " selected" : ""}`}
+                                title={portTitle(sw, port)}
+                                aria-label={`${sw.hostname} porta ${port.name}: ${COLOR_LABEL[color]}`}
+                                onClick={() => setSelection({ switchId: sw.id, port: port.index })}
+                              />
                             </td>
-                            <td className={`col-health mono ${healthClass(h)}`}>{h.toFixed(1)}%</td>
-                            {COLUMNS.map((n) => {
-                              const port = sw.ports[n - 1];
-                              if (!port) return <td key={n} className="col-port" />;
-                              const color = portColor(port);
-                              const selected = selection?.switchId === sw.id && selection.port === n;
-                              return (
-                                <td key={n} className="col-port">
-                                  <button
-                                    className={`port-sq ${color}${port.uplink ? " uplink" : ""}${selected ? " selected" : ""}`}
-                                    title={portTitle(sw, port)}
-                                    aria-label={`${sw.hostname} porta ${port.name}: ${COLOR_LABEL[color]}`}
-                                    onClick={() => setSelection({ switchId: sw.id, port: n })}
-                                  />
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        );
+                          );
+                        };
+                        return rows.map((row, r) => {
+                          const first = row[0]?.index ?? 1;
+                          const last = r * PORTS_PER_ROW + Math.max(row.length, 1);
+                          return (
+                            <tr
+                              key={`${sw.id}-${r}`}
+                              className={`switch-row${selectedRow}${r < rows.length - 1 ? " continues" : ""}`}
+                            >
+                              {r === 0 && (
+                                <>
+                                  <td className="col-name" rowSpan={rows.length}>
+                                    <button className="switch-name" onClick={() => setSelection({ switchId: sw.id, port: null })}>
+                                      <span className="mono">{sw.hostname}</span>
+                                      <span className="tag">{sw.role}</span>
+                                    </button>
+                                    <span className="switch-model muted">
+                                      {sw.model} · {sw.ports.filter((p) => !p.uplink).length} portas
+                                    </span>
+                                  </td>
+                                  <td className={`col-health mono ${healthClass(h)}`} rowSpan={rows.length}>
+                                    {h.toFixed(1)}%
+                                  </td>
+                                </>
+                              )}
+                              <td className="col-range mono muted">
+                                {String(first).padStart(2, "0")}–{String(last).padStart(2, "0")}
+                              </td>
+                              {COLUMNS.map((n) => square(row[n - 1], n))}
+                              <td className="col-gap" />
+                              {UPLINK_COLUMNS.map((n) => square(r === 0 ? uplinks[n - 1] : undefined, 100 + n))}
+                            </tr>
+                          );
+                        });
                       })}
                   </tbody>
                 );
@@ -235,7 +277,7 @@ export function LanPage() {
             )}
           </div>
           <p className="port-hint muted">
-            Quadrados com borda são uplinks. Passe o mouse sobre uma porta para ver os detalhes, clique para fixá-la no painel.
+            Cada linha tem 24 portas; switches de 48 portas ocupam duas linhas. As colunas U1–U4 são os uplinks. Passe o mouse sobre uma porta para ver os detalhes, clique para fixá-la no painel.
           </p>
         </section>
 

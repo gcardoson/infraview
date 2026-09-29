@@ -106,17 +106,32 @@ interface Blueprint {
   uplinks: number;
 }
 
-const BLUEPRINTS: Blueprint[] = [
-  { role: "Core", suffix: "CORE-01", model: "Aruba 6300M", access: 24, uplinks: 4 },
-  { role: "Distribuição", suffix: "DIST-01", model: "Aruba 6200F", access: 24, uplinks: 4 },
-  { role: "Acesso", suffix: "ADM-01", model: "Aruba 2930F", access: 48, uplinks: 4 },
-  { role: "Acesso", suffix: "PROD-01", model: "Aruba 2930F", access: 48, uplinks: 4 },
-  { role: "Acesso", suffix: "PROD-02", model: "Aruba 2930F", access: 24, uplinks: 2 },
-  { role: "Acesso", suffix: "BAL-01", model: "HPE 1920S", access: 24, uplinks: 2 },
-  { role: "Acesso", suffix: "PORT-01", model: "HPE 1920S", access: 8, uplinks: 2 },
+/* Switches are laid out in blocks of 24 ports; 48-port models take two rows. 8 and 12 ports are rare. */
+export const PORTS_PER_ROW = 24;
+
+const SITE_BLUEPRINTS: Blueprint[][] = [
+  [
+    { role: "Core", suffix: "CORE-01", model: "Aruba 6300M", access: 24, uplinks: 4 },
+    { role: "Distribuição", suffix: "DIST-01", model: "Aruba 6300F", access: 24, uplinks: 4 },
+    { role: "Acesso", suffix: "ADM-01", model: "Aruba 2930F-48G", access: 48, uplinks: 4 },
+    { role: "Acesso", suffix: "ADM-02", model: "Aruba 2930F-24G", access: 24, uplinks: 4 },
+    { role: "Acesso", suffix: "PROD-01", model: "Aruba 2930F-48G", access: 48, uplinks: 4 },
+    { role: "Acesso", suffix: "PROD-02", model: "Aruba 2930F-48G", access: 48, uplinks: 4 },
+    { role: "Acesso", suffix: "BRIT-01", model: "Aruba 2930F-24G", access: 24, uplinks: 4 },
+    { role: "Acesso", suffix: "BAL-01", model: "HPE 1920S-24G", access: 24, uplinks: 2 },
+    { role: "Acesso", suffix: "PORT-01", model: "HPE 1920S-8G", access: 8, uplinks: 2 },
+  ],
+  [
+    { role: "Core", suffix: "CORE-01", model: "Aruba 6300M", access: 24, uplinks: 4 },
+    { role: "Acesso", suffix: "ADM-01", model: "Aruba 2930F-48G", access: 48, uplinks: 4 },
+    { role: "Acesso", suffix: "PROD-01", model: "Aruba 2930F-48G", access: 48, uplinks: 4 },
+    { role: "Acesso", suffix: "PROD-02", model: "Aruba 2930F-24G", access: 24, uplinks: 4 },
+    { role: "Acesso", suffix: "FORNO-01", model: "Aruba 2930F-24G", access: 24, uplinks: 4 },
+    { role: "Acesso", suffix: "LAB-01", model: "Aruba 2530-12G", access: 12, uplinks: 2 },
+  ],
 ];
 
-export const MAX_PORTS = Math.max(...BLUEPRINTS.map((b) => b.access + b.uplinks));
+export const MAX_UPLINKS = Math.max(...SITE_BLUEPRINTS.flat().map((b) => b.uplinks));
 
 function buildSwitch(site: Site, siteIndex: number, bp: Blueprint, swIndex: number): NetworkSwitch {
   const rand = rng(site.id * 7919 + swIndex * 104729);
@@ -169,7 +184,7 @@ function buildSwitch(site: Site, siteIndex: number, bp: Blueprint, swIndex: numb
     role: bp.role,
     model: bp.model,
     managementIp: `10.${octet}.99.${swIndex + 2}`,
-    firmware: bp.model.startsWith("HPE") ? "PD.02.14" : "10.13.1010",
+    firmware: bp.model.startsWith("HPE") ? "PD.02.14" : bp.model.includes("6300") ? "10.13.1010" : "WC.16.11.0015",
     uptimeDays: Math.floor(rand() * 400) + 3,
     ports,
   };
@@ -183,8 +198,8 @@ const FALLBACK_SITES: Site[] = [
 export function buildNetwork(sites: Site[]): NetworkSwitch[] {
   const source = sites.length ? sites : FALLBACK_SITES;
   return source.flatMap((site, siteIndex) => {
-    // Larger sites get the full stack; the rest get a trimmed one so groups vary in size.
-    const blueprints = siteIndex % 2 === 0 ? BLUEPRINTS : BLUEPRINTS.filter((_, i) => i !== 3 && i !== 5);
+    // Alternate a larger and a smaller plant so groups vary in size.
+    const blueprints = SITE_BLUEPRINTS[siteIndex % SITE_BLUEPRINTS.length];
     return blueprints.map((bp, i) => buildSwitch(site, siteIndex, bp, i));
   });
 }
