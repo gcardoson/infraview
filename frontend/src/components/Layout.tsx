@@ -6,7 +6,7 @@ const LAYERS = [
   { to: "/lan", label: "L3 · Switches", ready: true },
   { to: "/firewall", label: "Firewall", ready: false },
   { to: "/wifi", label: "Wi-Fi", ready: false },
-  { to: "/servidores", label: "Servidores", ready: false },
+  { to: "/servidores", label: "Servidores", ready: true },
   { to: "/telefonia", label: "Telefonia", ready: false },
 ];
 

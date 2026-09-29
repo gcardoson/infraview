@@ -26,6 +26,16 @@ Primeira fase: **inventário**. A interface é organizada por camadas. Prontas a
 - indicadores de saúde, filtro "somente com problemas", detalhes da porta e do switch ao clicar,
   alertas e log de eventos.
 
+**Servidores** (`/servidores`), com dados fictícios por enquanto, organizada em três colunas por
+cluster de virtualização:
+
+- CPU: capacidade total do cluster (GHz, sockets, cores, threads, relação vCPU:pCPU) e, por host,
+  fabricante, modelo do processador, clock base e turbo, cores, threads, cache e uso recente;
+- memória: RAM instalada e máxima possível no cluster e por host, tipo (DDR3, DDR4, DDR5),
+  velocidade, módulos e o mapa de slots, destacando os slots livres;
+- armazenamento: capacidade, uso, provisionamento e overcommit, divisão por tipo (VMFS, NFS,
+  vSAN), baias do storage e a lista de datastores compartilhados e locais.
+
 Status, tráfego, alertas e log ainda são **simulados** no navegador, só para visualizar a tela em
 funcionamento. Os campos `librenms_device_id` e `prtg_object_id` já existem para a próxima fase,
 que vai puxar dados reais das APIs do LibreNMS e do PRTG.
@@ -118,6 +128,7 @@ backend/
 frontend/
   src/wan/              tela Layer 4 · Rede WAN (topologia, painéis, simulação, formulário)
   src/lan/              tela Layer 3 · Switches (grade de portas e dados fictícios)
+  src/servers/          tela Servidores (CPU, memória e armazenamento do cluster)
   src/pages/            cadastro de sites
   src/components/       layout, relógio, modal
 docker-compose.yml
@@ -126,6 +137,6 @@ docker-compose.yml
 ## Próximos passos
 
 1. Cadastro real de switches e portas, alimentado pelo LibreNMS.
-2. Demais camadas: firewall, Wi-Fi, servidores e telefonia.
+2. Dados reais dos servidores via vCenter; demais camadas: firewall, Wi-Fi e telefonia.
 3. Integração com LibreNMS e PRTG: trocar a telemetria simulada por dados reais.
 4. Autenticação de usuários.
