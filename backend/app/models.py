@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, func
+from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, func, text, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -14,6 +14,12 @@ class DeviceCategory(enum.StrEnum):
     server = "server"
     telephony = "telephony"
     other = "other"
+
+
+class LinkRole(enum.StrEnum):
+    primary = "primary"
+    secondary = "secondary"
+    backup = "backup"
 
 
 class LifecycleStatus(enum.StrEnum):
@@ -83,7 +89,19 @@ class InternetLink(TimestampMixin, Base):
     circuit_id: Mapped[str | None] = mapped_column(String(120))
     technology: Mapped[str | None] = mapped_column(String(64))
     bandwidth_mbps: Mapped[int | None] = mapped_column(Integer)
+    role: Mapped[LinkRole] = mapped_column(
+        _enum(LinkRole, "link_role"), default=LinkRole.primary, server_default=LinkRole.primary.value
+    )
+    # Fixed public addressing, when the provider delivers one.
     public_ip: Mapped[str | None] = mapped_column(String(64))
+    netmask: Mapped[str | None] = mapped_column(String(64))
+    gateway_ip: Mapped[str | None] = mapped_column(String(45))
+    # Whether outbound traffic is masqueraded (source NAT) behind this link.
+    nat_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    sdwan_device: Mapped[str | None] = mapped_column(String(120))
+    sdwan_port: Mapped[str | None] = mapped_column(String(64))
+    # Internal VLANs carried/served by this link: [{"vlan_id": 10, "name": "...", "subnet": "..."}].
+    vlans: Mapped[list[dict]] = mapped_column(JSON, default=list, server_default=text("'[]'"))
     status: Mapped[LifecycleStatus] = mapped_column(
         _enum(LifecycleStatus, "lifecycle_status"), default=LifecycleStatus.active
     )

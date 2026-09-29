@@ -64,3 +64,38 @@ def test_site_in_use_cannot_be_deleted(client: TestClient) -> None:
     site = make_site(client)
     client.post("/api/links", json={"site_id": site["id"], "provider": "Vivo", "bandwidth_mbps": 200})
     assert client.delete(f"/api/sites/{site['id']}").status_code == 409
+
+
+def test_link_wan_details(client: TestClient) -> None:
+    site = make_site(client)
+    payload = {
+        "site_id": site["id"],
+        "provider": "Vivo",
+        "role": "secondary",
+        "public_ip": "200.160.12.40/29",
+        "netmask": "255.255.255.248",
+        "gateway_ip": "200.160.12.41",
+        "nat_enabled": False,
+        "sdwan_device": "FGT-01",
+        "sdwan_port": "wan2",
+        "vlans": [{"vlan_id": 10, "name": "Corp", "subnet": "10.0.10.0/24"}],
+    }
+    link = client.post("/api/links", json=payload).json()
+    assert link["role"] == "secondary"
+    assert link["gateway_ip"] == "200.160.12.41"
+    assert link["nat_enabled"] is False
+    assert link["vlans"] == [{"vlan_id": 10, "name": "Corp", "subnet": "10.0.10.0/24"}]
+
+    patched = client.patch(f"/api/links/{link['id']}", json={"vlans": []}).json()
+    assert patched["vlans"] == []
+
+    bad_vlan = client.post("/api/links", json={**payload, "vlans": [{"vlan_id": 5000}]})
+    assert bad_vlan.status_code == 422
+
+
+def test_link_defaults(client: TestClient) -> None:
+    site = make_site(client)
+    link = client.post("/api/links", json={"site_id": site["id"], "provider": "TIM"}).json()
+    assert link["role"] == "primary"
+    assert link["nat_enabled"] is True
+    assert link["vlans"] == []
