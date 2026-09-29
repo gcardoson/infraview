@@ -1569,3 +1569,166 @@ button.port-sq:hover,
 .port-num.right {
   left: calc(100% - 2px);
 }
+
+/* ---------- port tooltip ---------- */
+
+.port-tooltip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  will-change: transform, opacity;
+  transition:
+    opacity 0.18s ease-out,
+    visibility 0s linear 0.18s;
+}
+
+.port-tooltip.visible {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 0.16s ease-out,
+    visibility 0s;
+}
+
+.tt-card {
+  --tt-accent: var(--ok);
+  width: 260px;
+  padding: 0.7rem 0.8rem 0.6rem;
+  border-radius: 6px;
+  background: rgba(14, 19, 22, 0.94);
+  border: 1px solid var(--line-2);
+  border-top: 2px solid var(--tt-accent);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(0, 0, 0, 0.4),
+    0 0 18px -6px var(--tt-accent);
+  backdrop-filter: blur(6px);
+  font-size: 0.78rem;
+  transform: translateY(4px) scale(0.97);
+  transform-origin: top left;
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.port-tooltip.visible .tt-card {
+  transform: none;
+}
+
+.port-tooltip.warn .tt-card {
+  --tt-accent: var(--warn);
+}
+
+.port-tooltip.crit .tt-card {
+  --tt-accent: var(--crit);
+}
+
+.port-tooltip.off .tt-card {
+  --tt-accent: var(--idle);
+}
+
+.tt-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-bottom: 0.55rem;
+  margin-bottom: 0.55rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.tt-title {
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.tt-port {
+  color: var(--text-2);
+}
+
+.tt-state {
+  align-self: flex-start;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+  color: var(--tt-accent, var(--ok));
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+}
+
+.tt-state.warn {
+  color: var(--warn);
+}
+
+.tt-state.crit {
+  color: var(--crit);
+}
+
+.tt-state.off {
+  color: var(--text-2);
+}
+
+.tt-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.3rem 0.8rem;
+  align-items: center;
+}
+
+.tt-label {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tt-value {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tt-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line-2);
+  overflow: hidden;
+}
+
+.tt-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--tt-accent);
+  transition: width 0.4s ease;
+}
+
+.tt-problem {
+  margin-top: 0.6rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.74rem;
+  color: var(--tt-accent);
+  background: color-mix(in srgb, var(--tt-accent) 10%, transparent);
+}
+
+.tt-hint {
+  margin-top: 0.55rem;
+  font-size: 0.66rem;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .port-tooltip,
+  .port-tooltip.visible,
+  .tt-card {
+    transition: none;
+  }
+}

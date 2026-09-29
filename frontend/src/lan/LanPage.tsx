@@ -16,6 +16,7 @@ import {
   switchHealth,
   useLanSimulation,
 } from "./data";
+import { PortTooltip, usePortTooltip } from "./PortTooltip";
 
 const timeFormat = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 const COLORS: PortColor[] = ["ok", "warn", "crit", "off"];
@@ -35,19 +36,6 @@ const accessNumber = (block: number, column: number, row: number) => block * POR
 interface Selection {
   switchId: string;
   port: number | null;
-}
-
-function portTitle(sw: NetworkSwitch, port: SwitchPort) {
-  return [
-    `${sw.hostname} · porta ${port.name}${port.uplink ? " (uplink)" : ""}`,
-    COLOR_LABEL[portColor(port)],
-    port.description ?? "Sem descrição",
-    port.link === "up" ? `${speedLabel(port.speedMbps)} · ${port.utilization}% de uso` : null,
-    port.vlan ? `VLAN ${port.vlan}` : null,
-    portProblem(port),
-  ]
-    .filter(Boolean)
-    .join("\n");
 }
 
 function counts(switches: NetworkSwitch[]) {
@@ -77,6 +65,7 @@ export function LanPage() {
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
   const [onlyProblems, setOnlyProblems] = useState(false);
   const [selection, setSelection] = useState<Selection | null>(null);
+  const tooltip = usePortTooltip();
 
   const siteFilter = Number(params.get("site")) || null;
   const visible = switches.filter((sw) => siteFilter === null || sw.siteId === siteFilter);
@@ -173,7 +162,7 @@ export function LanPage() {
             </label>
           </div>
 
-          <div className="port-scroll">
+          <div className="port-scroll" {...tooltip.handlers}>
             <table className="port-table">
               <thead>
                 <tr>
@@ -227,7 +216,8 @@ export function LanPage() {
                               {label && <span className={`port-num ${label}`}>{pad(port.index)}</span>}
                               <button
                                 className={`port-sq ${color}${port.uplink ? " uplink" : ""}${selected ? " selected" : ""}`}
-                                title={portTitle(sw, port)}
+                                data-switch={sw.id}
+                                data-port={port.index}
                                 aria-label={`${sw.hostname} porta ${port.name}: ${COLOR_LABEL[color]}`}
                                 onClick={() => setSelection({ switchId: sw.id, port: port.index })}
                               />
@@ -275,7 +265,7 @@ export function LanPage() {
             )}
           </div>
           <p className="port-hint muted">
-            As portas seguem o painel do switch: ímpares em cima, pares embaixo; switches de 48 portas mostram dois blocos de 24 lado a lado, e U1–U4 são os uplinks. Passe o mouse sobre uma porta para ver os detalhes, clique para fixá-la no painel.
+            As portas seguem o painel do switch: ímpares em cima, pares embaixo; switches de 48 portas mostram dois blocos de 24 lado a lado, e U1–U4 são os uplinks. Passe o mouse sobre uma porta para ver os detalhes; clique para fixá-la no painel.
           </p>
         </section>
 
@@ -370,6 +360,7 @@ export function LanPage() {
           ))}
         </div>
       </section>
+      <PortTooltip switches={switches} target={tooltip.target} visible={tooltip.visible} box={tooltip.box} />
     </div>
   );
 }
