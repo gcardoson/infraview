@@ -26,7 +26,7 @@ const BLOCK_COLUMNS = PORTS_PER_BLOCK / 2;
 const BLOCKS = [0, 1];
 const BLOCK_CELLS = Array.from({ length: BLOCK_COLUMNS }, (_, i) => i);
 const UPLINK_CELLS = Array.from({ length: Math.ceil(MAX_UPLINKS / 2) }, (_, i) => i);
-const TOTAL_COLUMNS = 2 + BLOCKS.length * (BLOCK_COLUMNS + 1) + UPLINK_CELLS.length;
+const TOTAL_COLUMNS = 2 + BLOCKS.length * (BLOCK_COLUMNS + 1) + 1 + UPLINK_CELLS.length;
 const pad = (n: number) => String(n).padStart(2, "0");
 
 /* 1-based access port number shown at a given block, column and row (0 = top/odd, 1 = bottom/even). */
@@ -180,21 +180,15 @@ export function LanPage() {
                   <th className="col-name">Switch / ativo</th>
                   <th className="col-health">Saúde</th>
                   {BLOCKS.map((b) => [
-                    ...BLOCK_CELLS.map((c) => (
-                      <th key={`${b}-${c}`} className="col-port stacked">
-                        {pad(accessNumber(b, c, 0))}
-                        <br />
-                        {pad(accessNumber(b, c, 1))}
-                      </th>
-                    )),
-                    <th key={`gap-${b}`} className="col-gap" />,
+                    <th key={`gap-${b}`} className={`col-gap${b ? " wide" : ""}`} />,
+                    <th key={`block-${b}`} className="col-block" colSpan={BLOCK_COLUMNS}>
+                      Portas {pad(b * PORTS_PER_BLOCK + 1)}–{pad((b + 1) * PORTS_PER_BLOCK)}
+                    </th>,
                   ])}
-                  {UPLINK_CELLS.map((c) => (
-                    <th key={`u-${c}`} className="col-port stacked" title="Uplinks">
-                      U{c * 2 + 1}
-                      <br />U{c * 2 + 2}
-                    </th>
-                  ))}
+                  <th className="col-gap" />
+                  <th className="col-block" colSpan={UPLINK_CELLS.length}>
+                    Uplinks
+                  </th>
                 </tr>
               </thead>
               {groups.map((group) => {
@@ -224,12 +218,13 @@ export function LanPage() {
                         const access = sw.ports.filter((p) => !p.uplink);
                         const uplinks = sw.ports.filter((p) => p.uplink);
                         const selectedRow = selection?.switchId === sw.id ? " selected" : "";
-                        const square = (port: SwitchPort | undefined, key: string) => {
+                        const square = (port: SwitchPort | undefined, key: string, label?: "left" | "right") => {
                           if (!port) return <td key={key} className="col-port" />;
                           const color = portColor(port);
                           const selected = selection?.switchId === sw.id && selection.port === port.index;
                           return (
                             <td key={key} className="col-port">
+                              {label && <span className={`port-num ${label}`}>{pad(port.index)}</span>}
                               <button
                                 className={`port-sq ${color}${port.uplink ? " uplink" : ""}${selected ? " selected" : ""}`}
                                 title={portTitle(sw, port)}
@@ -239,6 +234,11 @@ export function LanPage() {
                             </td>
                           );
                         };
+                        // Only the first and last column of each block this switch actually has get a label.
+                        const lastColumn = (b: number) =>
+                          Math.ceil(Math.min(PORTS_PER_BLOCK, Math.max(0, access.length - b * PORTS_PER_BLOCK)) / 2) - 1;
+                        const labelFor = (b: number, c: number) =>
+                          c === 0 ? "left" : c === lastColumn(b) ? "right" : undefined;
                         return [0, 1].map((row) => (
                           <tr key={`${sw.id}-${row}`} className={`switch-row${selectedRow}${row === 0 ? " continues" : ""}`}>
                             {row === 0 && (
@@ -258,9 +258,10 @@ export function LanPage() {
                               </>
                             )}
                             {BLOCKS.map((b) => [
-                              ...BLOCK_CELLS.map((c) => square(access[accessNumber(b, c, row) - 1], `${b}-${c}`)),
-                              <td key={`gap-${b}`} className="col-gap" />,
+                              <td key={`gap-${b}`} className={`col-gap${b ? " wide" : ""}`} />,
+                              ...BLOCK_CELLS.map((c) => square(access[accessNumber(b, c, row) - 1], `${b}-${c}`, labelFor(b, c))),
                             ])}
+                            <td className="col-gap" />
                             {UPLINK_CELLS.map((c) => square(uplinks[c * 2 + row], `u-${c}`))}
                           </tr>
                         ));

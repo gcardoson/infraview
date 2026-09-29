@@ -1523,3 +1523,49 @@ button.port-sq:hover,
 .port-table .switch-row:not(.continues) td.col-gap {
   padding-bottom: 8px;
 }
+
+.port-table th.col-block {
+  text-align: left;
+  padding-left: 4px;
+}
+
+.port-table .col-gap {
+  width: 20px;
+  min-width: 20px;
+}
+
+.port-table .col-gap.wide {
+  width: 40px;
+  min-width: 40px;
+}
+
+.port-table td.col-port {
+  position: relative;
+}
+
+.port-num {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  line-height: 1;
+  color: var(--text-2);
+  pointer-events: none;
+}
+
+.switch-row.continues .port-num {
+  margin-top: 3px;
+}
+
+.switch-row:not(.continues) .port-num {
+  margin-top: -3px;
+}
+
+.port-num.left {
+  right: calc(100% - 2px);
+}
+
+.port-num.right {
+  left: calc(100% - 2px);
+}

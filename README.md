@@ -19,7 +19,8 @@ Primeira fase: **inventário**. A interface é organizada por camadas. Prontas a
 
 - switches agrupados por site (grupos recolhíveis), um quadrado por porta, no formato do painel
   do switch: ímpares em cima e pares embaixo (01/02 … 23/24); switches de 48 portas mostram dois
-  blocos de 24 lado a lado; os uplinks ficam nas colunas U1–U4;
+  blocos de 24 lado a lado; só as duas primeiras e as duas últimas portas de cada bloco levam
+  etiqueta; os uplinks ficam nas colunas U1–U4;
 - cores: verde conectada, amarela em alerta ou 100 Mbps, vermelha desconectada, com erro ou
   10 Mbps, cinza desabilitada;
 - indicadores de saúde, filtro "somente com problemas", detalhes da porta e do switch ao clicar,
