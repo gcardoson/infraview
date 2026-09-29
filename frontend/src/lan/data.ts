@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Site } from "../api";
+import { FALLBACK_SITES } from "../fictitious";
 
 /* Fictitious switch inventory and port telemetry, used until the LibreNMS/PRTG collection exists. */
 
@@ -189,11 +190,6 @@ function buildSwitch(site: Site, siteIndex: number, bp: Blueprint, swIndex: numb
     ports,
   };
 }
-
-const FALLBACK_SITES: Site[] = [
-  { id: -1, code: "BR-ARC", name: "Planta Arcos", city: null, state: null, country: null, notes: null },
-  { id: -2, code: "BR-MAT", name: "Planta Matozinhos", city: null, state: null, country: null, notes: null },
-];
 
 export function buildNetwork(sites: Site[]): NetworkSwitch[] {
   const source = sites.length ? sites : FALLBACK_SITES;

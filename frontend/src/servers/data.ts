@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Site } from "../api";
+import { FALLBACK_SITES } from "../fictitious";
 
 /* Fictitious virtualization inventory (clusters, hosts, memory slots, datastores) until the real collection exists. */
 
@@ -309,11 +310,6 @@ function buildCluster(site: Site, siteIndex: number): Cluster {
     drs: siteIndex % 2 === 0 ? "Automático" : "Manual",
   };
 }
-
-const FALLBACK_SITES: Site[] = [
-  { id: -1, code: "BR-ARC", name: "Planta Arcos", city: null, state: null, country: null, notes: null },
-  { id: -2, code: "BR-MAT", name: "Planta Matozinhos", city: null, state: null, country: null, notes: null },
-];
 
 export function buildClusters(sites: Site[]): Cluster[] {
   return (sites.length ? sites : FALLBACK_SITES).map(buildCluster);

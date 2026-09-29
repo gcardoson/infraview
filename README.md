@@ -7,6 +7,17 @@ access points, servidores e telefonia.
 
 Primeira fase: **inventário**. A interface é organizada por camadas. Prontas até agora:
 
+**Explorer** (`/explorer`, a tela inicial), com salas e racks fictícios por enquanto:
+
+- mapa escuro (Leaflet, mapa base CARTO/OpenStreetMap carregado pela internet) com um marcador
+  por site, na posição cadastrada em Sites (latitude e longitude); aproximando, aparecem os
+  datacenters, salas técnicas e armários de rede do site;
+- busca por site, sala ou equipamento, indicadores de saúde e a lista de salas de cada site;
+- ao abrir uma sala (`/explorer/sala/<id>`): relógio e dados do controlador, sensores de presença,
+  porta, água e fumaça, log de eventos ao vivo, medidores e gráficos de 24 h (temperatura e umidade
+  no corredor frio e no interior, tensão, potência e consumo dos racks, CO₂ e PM2.5), quatro
+  câmeras simuladas e a elevação de cada rack.
+
 **Layer 4 · Rede WAN**:
 
 - inventário dos links de cada site: operadora, circuito, tecnologia, banda, papel
@@ -122,10 +133,11 @@ backend/
   app/models.py         modelos: Site, Device, InternetLink
   app/schemas.py        validação de entrada e saída (Pydantic)
   app/routers/          rotas CRUD em /api/sites, /api/devices, /api/links
-  app/seed.py           dados de exemplo
+  app/seed.py           dados de exemplo (inclui coordenadas dos sites de exemplo)
   alembic/              migrações do banco
   tests/                testes da API
 frontend/
+  src/explorer/         Explorer: mapa dos sites, salas técnicas, painel da sala e racks
   src/wan/              tela Layer 4 · Rede WAN (topologia, painéis, simulação, formulário)
   src/lan/              tela Layer 3 · Switches (grade de portas e dados fictícios)
   src/servers/          tela Servidores (CPU, memória e armazenamento do cluster)

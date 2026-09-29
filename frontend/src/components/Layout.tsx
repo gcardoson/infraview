@@ -2,6 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { Clock } from "./Clock";
 
 const LAYERS = [
+  { to: "/explorer", label: "Explorer", ready: true },
   { to: "/wan", label: "L4 · WAN", ready: true },
   { to: "/lan", label: "L3 · Switches", ready: true },
   { to: "/firewall", label: "Firewall", ready: false },

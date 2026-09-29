@@ -9,6 +9,8 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { SitesPage } from "./pages/SitesPage";
 import { ServersPage } from "./servers/ServersPage";
+import { ExplorerPage } from "./explorer/ExplorerPage";
+import { RoomPage } from "./explorer/RoomPage";
 import { LanPage } from "./lan/LanPage";
 import { WanPage } from "./wan/WanPage";
 import "./styles.css";
@@ -18,12 +20,14 @@ createRoot(document.getElementById("root")!).render(
     <BrowserRouter>
       <Routes>
         <Route element={<Layout />}>
-          <Route index element={<Navigate to="/wan" replace />} />
+          <Route index element={<Navigate to="/explorer" replace />} />
+          <Route path="/explorer" element={<ExplorerPage />} />
+          <Route path="/explorer/sala/:roomId" element={<RoomPage />} />
           <Route path="/wan" element={<WanPage />} />
           <Route path="/lan" element={<LanPage />} />
           <Route path="/servidores" element={<ServersPage />} />
           <Route path="/sites" element={<SitesPage />} />
-          <Route path="*" element={<Navigate to="/wan" replace />} />
+          <Route path="*" element={<Navigate to="/explorer" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -8,6 +8,8 @@ export interface Site {
   city: string | null;
   state: string | null;
   country: string | null;
+  latitude: number | null;
+  longitude: number | null;
   notes: string | null;
 }
 

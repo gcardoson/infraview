@@ -99,3 +99,13 @@ def test_link_defaults(client: TestClient) -> None:
     assert link["role"] == "primary"
     assert link["nat_enabled"] is True
     assert link["vlans"] == []
+
+
+def test_site_coordinates_are_validated(client: TestClient) -> None:
+    site = make_site(client)
+    updated = client.patch(f"/api/sites/{site['id']}", json={"latitude": -20.28, "longitude": -45.54})
+    assert updated.status_code == 200, updated.text
+    assert (updated.json()["latitude"], updated.json()["longitude"]) == (-20.28, -45.54)
+
+    response = client.patch(f"/api/sites/{site['id']}", json={"latitude": 95})
+    assert response.status_code == 422
