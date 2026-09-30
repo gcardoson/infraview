@@ -112,13 +112,12 @@ export function SiteMap({ sites, selectedSite, selectedRoom, onSelectSite, onSel
     group.clearLayers();
     for (const s of sites) {
       const health = worstHealth(s.rooms.map(roomHealth));
-      const racks = s.rooms.reduce((n, r) => n + r.racks.length, 0);
       const marker = L.marker([s.lat, s.lng], {
         icon: L.divIcon({
           className: "",
           html: `<div class="site-marker ${health}${selectedSite === s.site.id ? " selected" : ""}">
               <span class="pulse"></span><span class="core"></span>
-              <span class="site-marker-label"><b>${escape(s.site.code)}</b> ${s.rooms.length} salas · ${racks} racks</span>
+              <span class="site-marker-label"><b>${escape(s.site.code)}</b> CPD · ${s.rooms.length - 1} racks</span>
             </div>`,
           iconSize: [0, 0],
         }),
@@ -132,7 +131,7 @@ export function SiteMap({ sites, selectedSite, selectedRoom, onSelectSite, onSel
         const roomMarker = L.marker([room.lat, room.lng], {
           icon: L.divIcon({
             className: "",
-            html: `<div class="room-marker ${roomHealth(room)}${selectedRoom === room.id ? " selected" : ""}">
+            html: `<div class="room-marker ${room.kind} ${roomHealth(room)}${selectedRoom === room.id ? " selected" : ""}">
                 <span class="room-kind">${KIND_SHORT[room.kind]}</span>
                 <span class="room-marker-label">${escape(room.name)}</span>
               </div>`,

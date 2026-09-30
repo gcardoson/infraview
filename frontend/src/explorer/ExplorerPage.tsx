@@ -40,7 +40,7 @@ export function ExplorerPage() {
   );
 
   const rooms = explorer.flatMap((s) => s.rooms);
-  const racks = rooms.reduce((n, r) => n + r.racks.length, 0);
+  const racks = rooms.filter((r) => r.kind === "rack").length;
   const alerts = rooms.filter((r) => roomHealth(r) !== "ok").length;
 
   return (
@@ -48,15 +48,15 @@ export function ExplorerPage() {
       <aside className="ex-side">
         <div className="ex-side-head">
           <div className="eyebrow">Explorer</div>
-          <h1>Sites e salas técnicas</h1>
+          <h1>Sites, CPDs e racks</h1>
         </div>
         <label className="ex-search">
           <span aria-hidden>⌕</span>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar site, sala ou ativo…"
-            aria-label="Buscar site, sala ou ativo"
+            placeholder="Buscar site, rack ou ativo…"
+            aria-label="Buscar site, rack ou ativo"
           />
         </label>
         <div className="ex-kpis">
@@ -65,8 +65,8 @@ export function ExplorerPage() {
             <span className="mono">{String(explorer.length).padStart(2, "0")}</span>
           </div>
           <div>
-            <span className="kpi-label">Salas</span>
-            <span className="mono">{String(rooms.length).padStart(2, "0")}</span>
+            <span className="kpi-label">CPDs</span>
+            <span className="mono">{String(rooms.filter((r) => r.kind === "cpd").length).padStart(2, "0")}</span>
           </div>
           <div>
             <span className="kpi-label">Racks</span>
@@ -101,7 +101,9 @@ export function ExplorerPage() {
                         <button className="ex-room-item" onClick={() => select({ site: s.site.id, room: r.id })}>
                           <span className={`ex-kind ${r.kind}`}>{KIND_SHORT[r.kind]}</span>
                           <span className="ex-room-name">{r.name}</span>
-                          <span className="muted mono">{r.racks.length}R</span>
+                          <span className="muted mono">
+                            {r.kind === "cpd" ? `${r.racks.length}×42U` : `${r.racks[0].heightU}U`}
+                          </span>
                           <span className={`dot-lg ${roomHealth(r)}`} />
                         </button>
                       </li>
@@ -131,8 +133,11 @@ export function ExplorerPage() {
           resetKey={resetKey}
         />
         <div className="ex-toolbar">
-          <span className="badge sim" title="Salas, racks e sensores são fictícios; a posição dos sites vem do cadastro">
-            Salas e racks fictícios
+          <span
+            className="badge sim"
+            title="Sensores, câmeras e equipamentos dos racks são fictícios; a posição dos sites vem do cadastro e, onde há desenho de topologia, os racks vêm dele"
+          >
+            Dados fictícios
           </span>
           <button
             className="btn ex-reset"
@@ -165,9 +170,12 @@ export function ExplorerPage() {
                   <li key={r.id}>
                     <button className="ex-node" onClick={() => select({ site: selected.site.id, room: r.id })}>
                       <span className={`dot-lg ${h}`} />
-                      <span className="ex-node-name mono">{r.code}</span>
-                      <span className="ex-node-meta muted">
-                        {r.racks.length} rack{r.racks.length > 1 ? "s" : ""} · {dec(r.temperatureC)} °C
+                      <span className="ex-node-text">
+                        <span className="ex-node-name">{r.kind === "cpd" ? "CPD" : r.name.replace(/^Rack /, "")}</span>
+                        <span className="ex-node-meta muted">
+                          {r.kind === "cpd" ? `${r.racks.length} racks de 42U` : `${r.code} · ${r.racks[0].heightU}U`} ·{" "}
+                          {dec(r.temperatureC)} °C
+                        </span>
                       </span>
                       <span className={`ex-node-pct mono ${level(occupancy)}`} title="Ocupação dos racks">
                         {Math.round(occupancy)}%
@@ -182,7 +190,6 @@ export function ExplorerPage() {
             </ul>
           </section>
         )}
-
       </main>
     </div>
   );

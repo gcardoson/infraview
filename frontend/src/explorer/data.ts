@@ -1,9 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { Site } from "../api";
+import { TOPOLOGIES } from "../topology/data";
 
-/* Fictitious technical rooms, datacenters and racks per site, placed around the site's coordinates. */
+/*
+ * What the map shows at each plant: one CPD (core equipment, telecom and link hand-off, servers,
+ * backup, storage) and several access racks, where the network is distributed. Plants with a
+ * documented Layer 2 drawing (Topologia) take their racks from it; the rest get a fictitious set.
+ */
 
-export type RoomKind = "datacenter" | "sala" | "armario";
+export type RoomKind = "cpd" | "rack";
 export type Health = "ok" | "warn" | "crit";
 export type UnitKind = "firewall" | "switch" | "server" | "storage" | "patch" | "ups" | "other";
 
@@ -38,16 +43,13 @@ export interface Room {
   upsMinutes: number;
   cooling: string;
   access: string;
+  cameras: number;
   racks: Rack[];
 }
 
-export const KIND_LABEL: Record<RoomKind, string> = {
-  datacenter: "Datacenter",
-  sala: "Sala técnica",
-  armario: "Armário de rede",
-};
+export const KIND_LABEL: Record<RoomKind, string> = { cpd: "CPD", rack: "Rack" };
 
-export const KIND_SHORT: Record<RoomKind, string> = { datacenter: "DC", sala: "ST", armario: "AR" };
+export const KIND_SHORT: Record<RoomKind, string> = { cpd: "CPD", rack: "RK" };
 
 export const UNIT_LABEL: Record<UnitKind, string> = {
   firewall: "Firewall",
@@ -63,8 +65,10 @@ export const usedU = (rack: Rack) => rack.units.reduce((s, u) => s + u.size, 0);
 
 export function roomIssues(room: Room): { level: Health; text: string }[] {
   const issues: { level: Health; text: string }[] = [];
-  if (room.temperatureC >= 30) issues.push({ level: "crit", text: `Temperatura crítica: ${room.temperatureC.toFixed(1)} °C` });
-  else if (room.temperatureC >= 27) issues.push({ level: "warn", text: `Temperatura alta: ${room.temperatureC.toFixed(1)} °C` });
+  // Access racks sit in industrial areas without precision cooling, so they tolerate more heat than the CPD.
+  const [warnC, critC] = room.kind === "cpd" ? [27, 30] : [32, 35];
+  if (room.temperatureC >= critC) issues.push({ level: "crit", text: `Temperatura crítica: ${room.temperatureC.toFixed(1)} °C` });
+  else if (room.temperatureC >= warnC) issues.push({ level: "warn", text: `Temperatura alta: ${room.temperatureC.toFixed(1)} °C` });
   const load = room.powerKw / room.powerCapacityKw;
   if (load >= 0.9) issues.push({ level: "crit", text: `Carga elétrica em ${Math.round(load * 100)}%` });
   else if (load >= 0.8) issues.push({ level: "warn", text: `Carga elétrica em ${Math.round(load * 100)}%` });
@@ -96,13 +100,17 @@ function rng(seed: number) {
 
 type RackPlan = [label: string, kind: UnitKind, size: number][];
 
-const DC_RACKS: RackPlan[] = [
+/* CPD: two or three 42U racks. Network core and telecom, servers, then storage and backup. */
+const CPD_RACKS: RackPlan[] = [
   [
-    ["Patch panel 48p", "patch", 2],
+    ["DIO 48 fibras", "patch", 2],
+    ["Roteador operadora A", "other", 1],
+    ["Roteador operadora B", "other", 1],
     ["FW-{S}-01 FortiGate 200F", "firewall", 1],
     ["FW-{S}-02 FortiGate 200F", "firewall", 1],
-    ["SW-{S}-CORE-01 Aruba 6300M", "switch", 1],
-    ["SW-{S}-DIST-01 Aruba 6300F", "switch", 1],
+    ["SW-{S}-CORE-01 C9200L-24T", "switch", 1],
+    ["SW-{S}-CORE-02 C9200L-24P", "switch", 1],
+    ["Patch panel 24p", "patch", 1],
     ["Organizador de cabos", "other", 1],
     ["Nobreak APC SRT 6kVA", "ups", 4],
   ],
@@ -111,46 +119,33 @@ const DC_RACKS: RackPlan[] = [
     ["ESX01 PowerEdge R750", "server", 2],
     ["ESX02 PowerEdge R750", "server", 2],
     ["ESX03 ProLiant DL380", "server", 2],
-    ["ESX04 PowerEdge R740", "server", 2],
+    ["Console KVM", "other", 1],
     ["Nobreak APC SRT 10kVA", "ups", 6],
   ],
   [
     ["Storage PowerStore 500T", "storage", 2],
     ["NAS Synology RS3621", "storage", 2],
-    ["Switch SAN Brocade G620", "switch", 1],
-    ["Switch SAN Brocade G620", "switch", 1],
     ["Backup Veeam PowerEdge R650", "server", 1],
     ["Fita LTO-8 TL1000", "storage", 2],
   ],
-  [
-    ["Patch panel 48p", "patch", 2],
-    ["Servidor legado R630", "server", 1],
-    ["Servidor legado R620", "server", 1],
-    ["Console KVM", "other", 1],
-  ],
 ];
 
-const ROOM_RACKS: RackPlan[] = [
-  [
-    ["Patch panel 48p", "patch", 2],
-    ["SW-{S}-ADM-01 Aruba 2930F-48G", "switch", 1],
-    ["SW-{S}-ADM-02 Aruba 2930F-24G", "switch", 1],
-    ["Organizador de cabos", "other", 1],
-    ["Nobreak APC SMT 3kVA", "ups", 2],
-  ],
-  [
-    ["DIO 24 fibras", "patch", 1],
-    ["SW-{S}-PROD-01 Aruba 2930F-48G", "switch", 1],
-    ["Switch industrial Hirschmann", "switch", 1],
-    ["Nobreak APC SMT 1,5kVA", "ups", 2],
-  ],
-];
-
-const CABINET_RACK: RackPlan = [
-  ["DIO 12 fibras", "patch", 1],
-  ["SW-{S}-PORT-01 HPE 1920S-8G", "switch", 1],
-  ["Nobreak 1kVA", "ups", 2],
-];
+/* Access racks: 12U or 16U wall-mount cabinets with fibre, a switch and a small nobreak. */
+function accessPlan(heightU: 12 | 16, switchLabel: string): RackPlan {
+  return heightU === 16
+    ? [
+        ["DIO 24 fibras", "patch", 1],
+        ["Patch panel 24p", "patch", 1],
+        [switchLabel, "switch", 1],
+        ["Organizador de cabos", "other", 1],
+        ["Nobreak 2kVA", "ups", 2],
+      ]
+    : [
+        ["DIO 12 fibras", "patch", 1],
+        [switchLabel, "switch", 1],
+        ["Nobreak 1kVA", "ups", 2],
+      ];
+}
 
 function buildRack(id: string, name: string, heightU: number, plan: RackPlan, code: string, rand: () => number): Rack {
   let u = 1;
@@ -158,7 +153,7 @@ function buildRack(id: string, name: string, heightU: number, plan: RackPlan, co
   // Mount from the bottom, heavy gear (nobreak) first, leaving occasional gaps like a real rack.
   for (const [label, kind, size] of [...plan].reverse()) {
     units.push({ start: u, size, label: label.replace("{S}", code), kind });
-    u += size + (rand() < 0.35 ? 1 : 0);
+    u += size + (rand() < 0.3 && u + size < heightU - 2 ? 1 : 0);
   }
   return {
     id,
@@ -169,71 +164,52 @@ function buildRack(id: string, name: string, heightU: number, plan: RackPlan, co
   };
 }
 
-interface RoomPlan {
+interface RackSpot {
   code: string;
   name: string;
-  kind: RoomKind;
   building: string;
-  offset: [number, number];
-  racks: { name: string; heightU: number; plan: RackPlan }[];
-  capacityKw: number;
-  cooling: string;
+  switchLabel: string;
 }
 
-function plansFor(siteIndex: number): RoomPlan[] {
-  const plans: RoomPlan[] = [
-    {
-      code: "DC-01",
-      name: "Datacenter principal",
-      kind: "datacenter",
-      building: "Prédio administrativo · térreo",
-      offset: [0, 0],
-      racks: DC_RACKS.slice(0, siteIndex % 2 === 0 ? 4 : 3).map((plan, i) => ({ name: `RK-0${i + 1}`, heightU: 42, plan })),
-      capacityKw: 24,
-      cooling: "2× ar-condicionado de precisão 12 kW (N+1)",
-    },
-    {
-      code: "ST-ADM",
-      name: "Sala técnica administrativa",
-      kind: "sala",
-      building: "Prédio administrativo · 1º andar",
-      offset: [0.0009, 0.0011],
-      racks: [{ name: "RK-01", heightU: 24, plan: ROOM_RACKS[0] }],
-      capacityKw: 4,
-      cooling: "Split 18.000 BTU",
-    },
-    {
-      code: "ST-BRIT",
-      name: "Sala técnica britagem",
-      kind: "sala",
-      building: "Britagem primária",
-      offset: [-0.0062, 0.0071],
-      racks: [{ name: "RK-01", heightU: 24, plan: ROOM_RACKS[1] }],
-      capacityKw: 3,
-      cooling: "Split 12.000 BTU",
-    },
-    {
-      code: "ST-FORNO",
-      name: "Sala técnica fornos",
-      kind: "sala",
-      building: "Área de calcinação",
-      offset: [0.0048, -0.0083],
-      racks: [{ name: "RK-01", heightU: 24, plan: ROOM_RACKS[1] }],
-      capacityKw: 3,
-      cooling: "Split 12.000 BTU com filtro",
-    },
-    {
-      code: "AR-PORT",
-      name: "Armário da portaria",
-      kind: "armario",
-      building: "Portaria principal",
-      offset: [-0.0101, -0.0034],
-      racks: [{ name: "RK-01", heightU: 12, plan: CABINET_RACK }],
-      capacityKw: 1,
-      cooling: "Ventilação forçada",
-    },
-  ];
-  return siteIndex % 2 === 0 ? plans : plans.filter((p) => p.code !== "ST-FORNO");
+const GENERIC_RACKS: RackSpot[] = [
+  { code: "RK-ADM", name: "Administrativo", building: "Prédio administrativo", switchLabel: "SW-{S}-ADM-01 C2960-24TC-L" },
+  { code: "RK-BRIT", name: "Britagem", building: "Britagem primária", switchLabel: "SW-{S}-BRIT-01 C2960-24TC-L" },
+  { code: "RK-FORNO", name: "Fornos", building: "Área de calcinação", switchLabel: "SW-{S}-FORNO-01 C9200L-24P-4G" },
+  { code: "RK-EXPED", name: "Expedição", building: "Balança e expedição", switchLabel: "SW-{S}-EXP-01 C2960-24TC-L" },
+  { code: "RK-OFIC", name: "Oficina", building: "Oficina mecânica", switchLabel: "SW-{S}-OFI-01 C2960-24TC-L" },
+  { code: "RK-PORT", name: "Portaria", building: "Portaria principal", switchLabel: "SW-{S}-PORT-01 C2960-24TC-L" },
+];
+
+/* Racks from the plant's Layer 2 drawing: every switch outside the CPD is an access rack. */
+function documentedRacks(site: Site): { spots: RackSpot[]; cpdHost?: string } | null {
+  const topo = TOPOLOGIES.find(
+    (t) => t.code === site.code || (site.city && t.city.toLowerCase().startsWith(site.city.toLowerCase())),
+  );
+  if (!topo) return null;
+  // Nodes drawn inside a group belong to another site (BR-ACS shows Limeira's CPD for context).
+  const elsewhere = (n: (typeof topo.nodes)[number]) =>
+    topo.groups?.some((g) => n.x >= g.x && n.x <= g.x + g.w && n.y >= g.y && n.y <= g.y + g.h);
+  const switches = topo.nodes.filter((n) => (n.kind === "switch" || n.kind === "core") && n.hostname && n.ip && !elsewhere(n));
+  // The CPD is the node whose location says so; a plant drawn without one keeps its first core node there.
+  const cpd = switches.find((n) => n.location?.toUpperCase().startsWith("CPD")) ?? switches.find((n) => n.kind === "core");
+  return {
+    cpdHost: cpd?.hostname,
+    spots: switches
+      .filter((n) => n !== cpd && !n.location?.toUpperCase().startsWith("CPD") && !n.locationEn?.toLowerCase().includes("server room"))
+      .map((n) => ({
+        code: n.hostname!,
+        name: n.location ?? n.hostname!,
+        building: n.locationEn ? `${n.location} / ${n.locationEn}` : (n.location ?? ""),
+        switchLabel: `${n.hostname} ${n.model ?? ""}`.trim(),
+      })),
+  };
+}
+
+/* Racks spread around the CPD on a loose spiral, a few hundred metres apart like a plant's buildings. */
+function offset(i: number, rand: () => number): [number, number] {
+  const angle = i * 2.4 + rand() * 0.5;
+  const dist = 0.0035 + i * 0.0011 + rand() * 0.0012;
+  return [Math.sin(angle) * dist, Math.cos(angle) * dist * 1.1];
 }
 
 export interface ExplorerSite {
@@ -249,29 +225,55 @@ export function buildExplorer(sites: Site[]): ExplorerSite[] {
       if (site.latitude === null || site.longitude === null) return null;
       const rand = rng(Math.abs(site.id) * 7349 + 3);
       const code = site.code.replace(/^BR-/, "");
-      const rooms = plansFor(siteIndex).map((p, i): Room => {
-        const racks = p.racks.map((r, j) => buildRack(`${site.id}-${p.code}-${j}`, r.name, r.heightU, r.plan, code, rand));
-        const powerKw = racks.reduce((s, r) => s + r.powerKw, 0) * (1.1 + rand() * 0.25);
+      const documented = documentedRacks(site);
+      const cpdRacks = CPD_RACKS.slice(0, siteIndex % 2 === 0 ? 3 : 2).map((plan, j) =>
+        buildRack(`${site.id}-CPD-${j}`, `RK-0${j + 1}`, 42, plan, code, rand),
+      );
+      const cpd: Room = {
+        id: `${site.id}-CPD`,
+        siteId: site.id,
+        code: "CPD",
+        name: "CPD",
+        kind: "cpd",
+        building: documented?.cpdHost ? `Prédio administrativo · switch core ${documented.cpdHost}` : "Prédio administrativo · térreo",
+        lat: site.latitude,
+        lng: site.longitude,
+        temperatureC: 21 + rand() * 2.5,
+        humidity: 40 + rand() * 15,
+        powerKw: cpdRacks.reduce((s, r) => s + r.powerKw, 0) * (1.1 + rand() * 0.2),
+        powerCapacityKw: 16,
+        upsMinutes: 25 + rand() * 25,
+        cooling: "2× ar-condicionado de precisão 12 kW (N+1)",
+        access: "Biometria + cartão",
+        cameras: rand() < 0.5 ? 1 : 2,
+        racks: cpdRacks,
+      };
+      const spots = documented?.spots ?? GENERIC_RACKS.slice(0, siteIndex % 2 === 0 ? 6 : 5);
+      const racks = spots.map((spot, i): Room => {
+        const heightU = rand() < 0.5 ? 16 : 12;
+        const rack = buildRack(`${site.id}-${spot.code}-0`, spot.code, heightU, accessPlan(heightU, spot.switchLabel), code, rand);
+        const [dLat, dLng] = offset(i, rand);
         return {
-          id: `${site.id}-${p.code}`,
+          id: `${site.id}-${spot.code}`,
           siteId: site.id,
-          code: p.code,
-          name: p.name,
-          kind: p.kind,
-          building: p.building,
-          lat: site.latitude! + p.offset[0],
-          lng: site.longitude! + p.offset[1],
-          temperatureC: p.kind === "datacenter" ? 21 + rand() * 2.5 : 23 + rand() * 4 + (i === 2 ? 2.5 : 0),
-          humidity: 40 + rand() * 18,
-          powerKw,
-          powerCapacityKw: p.capacityKw,
-          upsMinutes: p.kind === "armario" ? 12 + rand() * 10 : 18 + rand() * 30,
-          cooling: p.cooling,
-          access: p.kind === "datacenter" ? "Biometria + cartão" : p.kind === "sala" ? "Cartão" : "Chave",
-          racks,
+          code: spot.code,
+          name: `Rack ${spot.name}`,
+          kind: "rack",
+          building: spot.building,
+          lat: site.latitude! + dLat,
+          lng: site.longitude! + dLng,
+          temperatureC: 25 + rand() * 4 + (i === 1 ? 4 : 0),
+          humidity: 42 + rand() * 18,
+          powerKw: rack.powerKw * (1.1 + rand() * 0.3),
+          powerCapacityKw: 1.5,
+          upsMinutes: 12 + rand() * 18,
+          cooling: rand() < 0.6 ? "Ventilação forçada" : "Ventilação natural",
+          access: rand() < 0.5 ? "Chave" : "Cadeado",
+          cameras: 0,
+          racks: [rack],
         };
       });
-      return { site, lat: site.latitude!, lng: site.longitude!, rooms };
+      return { site, lat: site.latitude, lng: site.longitude, rooms: [cpd, ...racks] };
     })
     .filter((s): s is ExplorerSite => s !== null);
 }
@@ -292,9 +294,9 @@ export function useExplorerSimulation(initial: ExplorerSite[], tickMs = 2500) {
       const next = state.current.map((s) => ({
         ...s,
         rooms: s.rooms.map((room) => {
-          const target = room.kind === "datacenter" ? 22 : 25;
+          const target = room.kind === "cpd" ? 22 : 27;
           const spike = Math.random() < 0.02 ? 4 + Math.random() * 3 : 0;
-          const temperatureC = Math.max(18, Math.min(34, room.temperatureC + (target - room.temperatureC) * 0.08 + (Math.random() - 0.5) * 0.6 + spike));
+          const temperatureC = Math.max(18, Math.min(38, room.temperatureC + (target - room.temperatureC) * 0.08 + (Math.random() - 0.5) * 0.6 + spike));
           return {
             ...room,
             temperatureC,

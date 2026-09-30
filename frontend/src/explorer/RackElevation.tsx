@@ -13,7 +13,7 @@ export function RackElevation({ rack }: { rack: Rack }) {
           {occupied}/{rack.heightU}U
         </span>
       </div>
-      <div className="ex-rack-body" style={{ gridTemplateRows: `repeat(${rack.heightU}, 1fr)` }}>
+      <div className="ex-rack-body" style={{ gridTemplateRows: `repeat(${rack.heightU}, 1fr)`, "--u": rack.heightU } as React.CSSProperties}>
         {rows.map((u) => (
           <span key={`slot-${u}`} className="ex-rack-slot" style={{ gridRow: rack.heightU - u + 1 }} />
         ))}

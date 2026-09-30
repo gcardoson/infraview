@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { AreaChart, ArcGauge } from "./charts";
 import { type Health, KIND_LABEL, type Room, roomHealth, roomIssues, UNIT_LABEL, type UnitKind } from "./data";
 import { RackElevation } from "./RackElevation";
-import { METRICS, type MetricKey, type MetricSpec, type RoomTelemetry, useRoomTelemetry } from "./telemetry";
+import { METRICS, type MetricKey, type MetricSpec, metricSpec, type RoomTelemetry, useRoomTelemetry } from "./telemetry";
 import { useExplorer } from "./useExplorer";
 
 /* Room dashboard: environment gauges, 24h curves, presence/leak sensors, live events, cameras and racks. */
@@ -19,7 +19,7 @@ function controller(room: Room) {
   const mac = Array.from({ length: 6 }, (_, i) => ((h >>> (i * 5)) & 0xff).toString(16).padStart(2, "0"));
   mac[0] = "00";
   return {
-    ip: `10.${room.siteId % 250}.${(h % 200) + 10}.${(h >>> 8) % 240 + 10}`,
+    ip: `10.${room.siteId % 250}.${(h % 200) + 10}.${((h >>> 8) % 240) + 10}`,
     mac: mac.join(":").toUpperCase(),
   };
 }
@@ -51,6 +51,25 @@ function groups(room: Room): Group[] {
     max: room.powerCapacityKw,
     high: [room.powerCapacityKw * 0.8, room.powerCapacityKw * 0.9],
   };
+  const temp = metricSpec(room, "tempIn");
+  const inside: Group = {
+    title: room.kind === "cpd" ? "Interno" : "Interior do rack",
+    gauges: [{ key: "tempIn", spec: temp }, { key: "humIn" }],
+    charts: [
+      { key: "tempIn", title: "Temperatura · 24h", icon: "🌡", spec: temp },
+      { key: "humIn", title: "Umidade · 24h", icon: "💧" },
+    ],
+  };
+  const energy: Group = {
+    title: room.kind === "cpd" ? "Energia dos racks" : "Energia do rack",
+    gauges: [{ key: "voltage" }, { key: "power", spec: power }],
+    charts: [
+      { key: "voltage", title: "Tensão · 24h", icon: "⚡" },
+      { key: "energy", title: "Consumo a cada 15 min · 24h", icon: "∑" },
+    ],
+  };
+  // An access rack is a single cabinet: no cold aisle and no room air to measure.
+  if (room.kind === "rack") return [inside, energy];
   return [
     {
       title: "Corredor frio",
@@ -60,22 +79,8 @@ function groups(room: Room): Group[] {
         { key: "humFront", title: "Umidade · 24h", icon: "💧" },
       ],
     },
-    {
-      title: "Interno",
-      gauges: [{ key: "tempIn" }, { key: "humIn" }],
-      charts: [
-        { key: "tempIn", title: "Temperatura · 24h", icon: "🌡" },
-        { key: "humIn", title: "Umidade · 24h", icon: "💧" },
-      ],
-    },
-    {
-      title: "Energia dos racks",
-      gauges: [{ key: "voltage" }, { key: "power", spec: power }],
-      charts: [
-        { key: "voltage", title: "Tensão · 24h", icon: "⚡" },
-        { key: "energy", title: "Consumo a cada 15 min · 24h", icon: "∑" },
-      ],
-    },
+    inside,
+    energy,
     {
       title: "Qualidade do ar",
       gauges: [{ key: "co2" }, { key: "pm25" }],
@@ -98,7 +103,7 @@ export function RoomPage() {
   if (!room || !site || !telemetry) {
     return (
       <div className="room-page">
-        <p className="muted">{sites.loading || !explorer.length ? "Carregando sala…" : "Sala não encontrada."}</p>
+        <p className="muted">{sites.loading || !explorer.length ? "Carregando…" : "CPD ou rack não encontrado."}</p>
         <Link to="/explorer" className="btn">
           Voltar ao mapa
         </Link>
@@ -162,7 +167,7 @@ export function RoomPage() {
             <dd className="mono">{Math.round(room.upsMinutes)} min de autonomia</dd>
             <dt>Carga</dt>
             <dd className="mono">
-              {dec(room.powerKw, 2)} / {room.powerCapacityKw} kW ({Math.round(load)}%)
+              {dec(room.powerKw, 2)} / {dec(room.powerCapacityKw)} kW ({Math.round(load)}%)
             </dd>
           </dl>
           {issues.length > 0 && (
@@ -232,45 +237,51 @@ export function RoomPage() {
               </div>
             </div>
             {g.charts.map((c) => (
-              <AreaChart key={c.key} title={c.title} icon={c.icon} spec={c.spec ?? METRICS[c.key]} values={live(telemetry, c.key)} />
+              <AreaChart
+                key={c.key}
+                title={c.title}
+                icon={c.icon}
+                spec={c.spec ?? METRICS[c.key]}
+                values={live(telemetry, c.key)}
+              />
             ))}
           </section>
         ))}
       </div>
 
-      <section className="room-cameras">
-        <div className="room-section-title">
-          Câmeras
-          <span className="muted">imagens simuladas</span>
-        </div>
-        <div className="camera-grid">
-          {["Entrada", "Corredor frio", "Corredor quente", "Fundos"].map((name, i) => (
-            <div key={name} className={`camera cam-${i}`}>
-              <div className="camera-scene" aria-hidden>
-                {Array.from({ length: 5 }, (_, k) => (
-                  <span key={k} className="camera-rack" />
-                ))}
+      {room.cameras > 0 && (
+        <section className="room-cameras">
+          <div className="room-section-title">
+            Câmeras CFTV
+            <span className="muted">imagens simuladas</span>
+          </div>
+          <div className="camera-grid">
+            {["Entrada", "Corredor dos racks"].slice(0, room.cameras).map((name, i) => (
+              <div key={name} className={`camera cam-${i}`}>
+                <div className="camera-scene" aria-hidden>
+                  {Array.from({ length: room.racks.length }, (_, k) => (
+                    <span key={k} className="camera-rack" />
+                  ))}
+                </div>
+                <span className="camera-rec mono">
+                  <span className="rec-dot" /> REC
+                </span>
+                <span className="camera-name mono">
+                  CAM-0{i + 1} · {name}
+                </span>
+                <span className="camera-time mono">
+                  {now.toLocaleDateString("pt-BR")} {now.toLocaleTimeString("pt-BR")}
+                </span>
               </div>
-              <span className="camera-rec mono">
-                <span className="rec-dot" /> REC
-              </span>
-              <span className="camera-name mono">
-                CAM-0{i + 1} · {name}
-              </span>
-              <span className="camera-time mono">
-                {now.toLocaleDateString("pt-BR")} {now.toLocaleTimeString("pt-BR")}
-              </span>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="room-racks">
         <div className="room-section-title">
-          Racks
-          <span className="muted">
-            {room.racks.length} rack{room.racks.length > 1 ? "s" : ""} · passe o mouse sobre um equipamento
-          </span>
+          {room.kind === "cpd" ? "Racks" : "Rack"}
+          <span className="muted">{room.kind === "cpd" ? `${room.racks.length} racks de 42U` : `${room.racks[0].heightU}U`} · passe o mouse sobre um equipamento</span>
         </div>
         <div className="room-rack-row">
           {room.racks.map((r) => (

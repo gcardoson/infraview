@@ -7,18 +7,20 @@ access points, servidores e telefonia.
 
 Primeira fase: **inventário**. A interface é organizada por camadas. Prontas até agora:
 
-**Explorer** (`/explorer`, a tela inicial), com salas e racks fictícios por enquanto:
+**Explorer** (`/explorer`, a tela inicial), com sensores e equipamentos fictícios por enquanto:
 
 - mapa escuro (Leaflet) com um marcador por site. O mapa base vem de serviços públicos e
-  gratuitos, sem chave de API (Esri e OpenStreetMap; a CARTO passou a exigir chave), tentados em ordem até um responder,
-  com seletor no canto do mapa; se a rede bloquear todos, ficam os contornos offline de países,
-  estados e rios (Natural Earth), servidos pelo próprio InfraView. Cada site aparece na posição cadastrada em Sites (latitude e longitude); aproximando, aparecem os
-  datacenters, salas técnicas e armários de rede do site;
-- busca por site, sala ou equipamento, indicadores de saúde e a lista de salas de cada site;
-- ao abrir uma sala (`/explorer/sala/<id>`): relógio e dados do controlador, sensores de presença,
-  porta, água e fumaça, log de eventos ao vivo, medidores e gráficos de 24 h (temperatura e umidade
-  no corredor frio e no interior, tensão, potência e consumo dos racks, CO₂ e PM2.5), quatro
-  câmeras simuladas e a elevação de cada rack.
+  gratuitos, sem chave de API (Esri e OpenStreetMap; a CARTO passou a exigir chave), tentados em
+  ordem até um responder, com seletor no canto do mapa; se a rede bloquear todos, ficam os
+  contornos offline de países, estados e rios (Natural Earth), servidos pelo próprio InfraView.
+  Cada site aparece na posição cadastrada em Sites (latitude e longitude);
+- aproximando, aparecem os dois tipos de objeto de cada planta: o **CPD** (equipamentos centrais,
+  entrega de links, telecom, servidores, backup e storage, com 2 ou 3 racks de 42U e 1 ou 2
+  câmeras CFTV) e os **racks** de acesso (12U ou 16U), onde a rede é distribuída. Nas plantas com
+  desenho de topologia, os racks são os switches do desenho;
+- ao abrir um CPD ou rack (`/explorer/sala/<id>`): relógio e dados do controlador, sensores,
+  log de eventos ao vivo, medidores e gráficos de 24 h (temperatura e umidade, tensão, potência e
+  consumo; no CPD também corredor frio, CO₂ e PM2.5), câmeras do CPD e a elevação dos racks.
 
 **Layer 4 · Rede WAN**:
 

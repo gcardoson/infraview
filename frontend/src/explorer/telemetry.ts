@@ -49,6 +49,13 @@ export function levelOf(spec: MetricSpec, value: number): Level {
   return "ok";
 }
 
+/* Access racks sit in industrial areas without precision cooling, so their temperature limits are wider. */
+const RACK_TEMP: MetricSpec = { ...METRICS.tempIn, max: 50, high: [32, 35] };
+
+export function metricSpec(room: Room, key: MetricKey): MetricSpec {
+  return room.kind === "rack" && key === "tempIn" ? RACK_TEMP : METRICS[key];
+}
+
 export interface Sensor {
   id: string;
   label: string;
@@ -126,14 +133,21 @@ function initial(room: Room): RoomTelemetry {
       pm25: series(rand, values.pm25, 1.5, 1.2, 9).map((v) => Math.max(0, v)),
       energy: series(rand, values.energy, values.energy * 0.08, values.energy * 0.06),
     },
-    sensors: [
-      { id: "porta", label: "Porta", kind: "door", active: false },
-      { id: "interno", label: "Interno", kind: "presence", active: false },
-      { id: "corredor", label: "Corredor", kind: "presence", active: false },
-      { id: "fundos", label: "Fundos", kind: "presence", active: false },
-      { id: "agua", label: "Água", kind: "water", active: false },
-      { id: "fumaca", label: "Fumaça", kind: "smoke", active: false },
-    ],
+    // An access rack is a single cabinet: only its door and a smoke detector are monitored.
+    sensors:
+      room.kind === "cpd"
+        ? [
+            { id: "porta", label: "Porta", kind: "door", active: false },
+            { id: "interno", label: "Interno", kind: "presence", active: false },
+            { id: "corredor", label: "Corredor", kind: "presence", active: false },
+            { id: "fundos", label: "Fundos", kind: "presence", active: false },
+            { id: "agua", label: "Água", kind: "water", active: false },
+            { id: "fumaca", label: "Fumaça", kind: "smoke", active: false },
+          ]
+        : [
+            { id: "porta", label: "Porta do rack", kind: "door", active: false },
+            { id: "fumaca", label: "Fumaça", kind: "smoke", active: false },
+          ],
     events: [],
   };
 }
@@ -197,11 +211,12 @@ export function useRoomTelemetry(room: Room | null, tickMs = 2000): RoomTelemetr
         }
       }
 
-      for (const key of ["tempIn", "humIn", "voltage", "co2", "pm25"] as MetricKey[]) {
-        const before = levelOf(METRICS[key], prev.values[key]);
-        const after = levelOf(METRICS[key], v[key]);
+      const watched: MetricKey[] = r.kind === "cpd" ? ["tempIn", "humIn", "voltage", "co2", "pm25"] : ["tempIn", "humIn", "voltage"];
+      for (const key of watched) {
+        const spec = metricSpec(r, key);
+        const before = levelOf(spec, prev.values[key]);
+        const after = levelOf(spec, v[key]);
         if (before !== after) {
-          const spec = METRICS[key];
           const text = `${spec.label} ${after === "ok" ? "normalizada" : after === "warn" ? "em atenção" : "crítica"}: ${v[key].toFixed(spec.digits)} ${spec.unit}`;
           log(after, "Ambiente", text);
         }
