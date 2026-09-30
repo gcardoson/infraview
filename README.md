@@ -7,17 +7,21 @@ access points, servidores e telefonia.
 
 Primeira fase: **inventário**. A interface é organizada por camadas. Prontas até agora:
 
-**Explorer** (`/explorer`, a tela inicial), com sensores e equipamentos fictícios por enquanto:
+**Explorer** (`/explorer`, a tela inicial), montado a partir da Topologia, com sensores simulados por enquanto:
 
 - mapa escuro (Leaflet) com um marcador por site. O mapa base vem de serviços públicos e
   gratuitos, sem chave de API (Esri e OpenStreetMap; a CARTO passou a exigir chave), tentados em
   ordem até um responder, com seletor no canto do mapa; se a rede bloquear todos, ficam os
   contornos offline de países, estados e rios (Natural Earth), servidos pelo próprio InfraView.
   Cada site aparece na posição cadastrada em Sites (latitude e longitude);
-- aproximando, aparecem os dois tipos de objeto de cada planta: o **CPD** (equipamentos centrais,
-  entrega de links, telecom, servidores, backup e storage, com 2 ou 3 racks de 42U e 1 ou 2
-  câmeras CFTV) e os **racks** de acesso (12U ou 16U), onde a rede é distribuída. Nas plantas com
-  desenho de topologia, os racks são os switches do desenho;
+- aproximando, aparecem os dois tipos de objeto de cada planta, vindos do desenho da Topologia: o
+  **CPD** (quadrado de cantos arredondados), onde fica o switch central, e os **racks** de acesso
+  (círculo), um por switch restante do desenho. Os racks do CPD têm 42U; os de acesso têm 16U
+  quando o switch é empilhado ou de 48 portas e 12U nos demais. Os racks mostram o que o desenho
+  documenta (DIO quando há fibra e os switches); os APs ficam na sala do switch a que se ligam. A
+  posição dos racks no mapa é ilustrativa, porque o desenho não tem geografia;
+- no painel de cada CPD ou rack, o quadro **Rede** lista os switches e APs com o status (o mesmo da
+  Topologia) e os enlaces com meio, fibras e portas, com link para o ativo na Topologia;
 - ao abrir um CPD ou rack (`/explorer/sala/<id>`): relógio e dados do controlador, sensores,
   log de eventos ao vivo, medidores e gráficos de 24 h (temperatura e umidade, tensão, potência e
   consumo; no CPD também corredor frio, CO₂ e PM2.5), câmeras do CPD e a elevação dos racks.

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AreaChart, ArcGauge } from "./charts";
+import { MEDIUM_SHORT, TOPOLOGIES } from "../topology/data";
+import { STATUS_LABEL, useTopologyStatus } from "../topology/status";
 import { type Health, KIND_LABEL, type Room, roomHealth, roomIssues, UNIT_LABEL, type UnitKind } from "./data";
 import { RackElevation } from "./RackElevation";
 import { METRICS, type MetricKey, type MetricSpec, metricSpec, type RoomTelemetry, useRoomTelemetry } from "./telemetry";
@@ -92,6 +94,67 @@ function groups(room: Room): Group[] {
   ];
 }
 
+const DEVICE_KIND = { core: "Switch central", switch: "Switch", ap: "Access point", passive: "Passivo" } as const;
+
+/* The room's switches and APs as documented in Topologia, with their (simulated) status and uplinks. */
+function RoomNetwork({ room }: { room: Room }) {
+  const topology = TOPOLOGIES.find((t) => t.code === room.topology)!;
+  const health = useTopologyStatus(topology);
+  const to = (node?: string) => `/topologia?site=${topology.code}${node ? `&node=${node}` : ""}`;
+  return (
+    <section className="panel room-network">
+      <div className="room-section-title">
+        Rede
+        <Link to={to(room.devices[0]?.nodeId)} className="muted">
+          Topologia {topology.code} · {topology.revision} ›
+        </Link>
+      </div>
+      <ul className="room-devices">
+        {room.devices.map((d) => {
+          const h = health[d.nodeId];
+          return (
+            <li key={d.nodeId}>
+              <span className={`topo-dot ${h?.status ?? "online"}`} title={h ? STATUS_LABEL[h.status] : undefined} />
+              <Link to={to(d.nodeId)} className="mono">
+                {d.hostname}
+              </Link>
+              <span className="muted">{DEVICE_KIND[d.kind]}</span>
+              <span className="mono muted">{[d.ip, d.model].filter(Boolean).join(" · ")}</span>
+              {d.nok && <span className="room-device-nok">{d.nok}</span>}
+            </li>
+          );
+        })}
+      </ul>
+      {room.links.length > 0 && (
+        <table className="room-links">
+          <thead>
+            <tr>
+              <th>Enlace</th>
+              <th>Meio</th>
+              <th>Portas</th>
+            </tr>
+          </thead>
+          <tbody>
+            {room.links.map((l) => (
+              <tr key={l.id} className={l.broken ? "broken" : undefined}>
+                <td>
+                  {l.peer}
+                  {l.broken && <span className="topo-pill down">Interrompido</span>}
+                </td>
+                <td className="mono">
+                  {MEDIUM_SHORT[l.medium]}
+                  {l.fibers ? ` · ${l.fibers}f` : ""}
+                </td>
+                <td className="mono muted">{l.ports || "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
+  );
+}
+
 export function RoomPage() {
   const { roomId = "" } = useParams();
   const { sites, explorer } = useExplorer();
@@ -139,8 +202,8 @@ export function RoomPage() {
           </div>
         </div>
         <div className="room-head-actions">
-          <span className="badge sim" title="Sensores, câmeras e eventos desta sala são simulados">
-            Dados fictícios
+          <span className="badge sim" title="Switches, APs e enlaces vêm da Topologia; sensores, energia, câmeras e eventos são simulados">
+            Sensores simulados
           </span>
           <Link to={`/explorer?site=${site.site.id}`} className="btn">
             ‹ Voltar ao mapa
@@ -223,6 +286,8 @@ export function RoomPage() {
           </ol>
         </section>
       </div>
+
+      {room.topology && <RoomNetwork room={room} />}
 
       <div className="room-groups">
         {groups(room).map((g) => (

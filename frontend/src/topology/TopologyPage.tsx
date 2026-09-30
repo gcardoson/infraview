@@ -52,7 +52,11 @@ export function TopologyPage() {
   const [params, setParams] = useSearchParams();
   const topology = TOPOLOGIES.find((t) => t.code === params.get("site")) ?? TOPOLOGIES[0];
   const health = useTopologyStatus(topology);
-  const [selected, setSelected] = useState<Selection>(null);
+  // The Explorer links straight to a device with ?node=.
+  const [selected, setSelected] = useState<Selection>(() => {
+    const node = params.get("node");
+    return node && topology.nodes.some((n) => n.id === node) ? { kind: "node", id: node } : null;
+  });
   const [hovered, setHovered] = useState<Selection>(null);
   const [zoom, setZoom] = useState(0);
   const [onlyProblems, setOnlyProblems] = useState(false);

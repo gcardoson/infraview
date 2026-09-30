@@ -135,9 +135,9 @@ export function ExplorerPage() {
         <div className="ex-toolbar">
           <span
             className="badge sim"
-            title="Sensores, câmeras e equipamentos dos racks são fictícios; a posição dos sites vem do cadastro e, onde há desenho de topologia, os racks vêm dele"
+            title="CPD, racks e switches vêm da Topologia; a posição dos racks no mapa é ilustrativa; sensores, energia e câmeras são simulados"
           >
-            Dados fictícios
+            Sensores simulados
           </span>
           <button
             className="btn ex-reset"

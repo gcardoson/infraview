@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { Site } from "../api";
-import { TOPOLOGIES } from "../topology/data";
+import { type Medium, type NodeKind, type SiteTopology, TOPOLOGIES, type TopoNode } from "../topology/data";
 
 /*
  * What the map shows at each plant: one CPD (core equipment, telecom and link hand-off, servers,
- * backup, storage) and several access racks, where the network is distributed. Plants with a
- * documented Layer 2 drawing (Topologia) take their racks from it; the rest get a fictitious set.
+ * backup, storage) and several access racks, where the network is distributed. Both come from the
+ * plant's Layer 2 drawing (Topologia); room sensors and power stay simulated until they are collected.
  */
 
 export type RoomKind = "cpd" | "rack";
@@ -45,6 +45,10 @@ export interface Room {
   access: string;
   cameras: number;
   racks: Rack[];
+  /* Code of the Topologia drawing the room's devices come from. */
+  topology?: string;
+  devices: RoomDevice[];
+  links: RoomLink[];
 }
 
 export const KIND_LABEL: Record<RoomKind, string> = { cpd: "CPD", rack: "Rack" };
@@ -100,180 +104,185 @@ function rng(seed: number) {
 
 type RackPlan = [label: string, kind: UnitKind, size: number][];
 
-/* CPD: two or three 42U racks. Network core and telecom, servers, then storage and backup. */
-const CPD_RACKS: RackPlan[] = [
-  [
-    ["DIO 48 fibras", "patch", 2],
-    ["Roteador operadora A", "other", 1],
-    ["Roteador operadora B", "other", 1],
-    ["FW-{S}-01 FortiGate 200F", "firewall", 1],
-    ["FW-{S}-02 FortiGate 200F", "firewall", 1],
-    ["SW-{S}-CORE-01 C9200L-24T", "switch", 1],
-    ["SW-{S}-CORE-02 C9200L-24P", "switch", 1],
-    ["Patch panel 24p", "patch", 1],
-    ["Organizador de cabos", "other", 1],
-    ["Nobreak APC SRT 6kVA", "ups", 4],
-  ],
-  [
-    ["Patch panel 24p", "patch", 1],
-    ["ESX01 PowerEdge R750", "server", 2],
-    ["ESX02 PowerEdge R750", "server", 2],
-    ["ESX03 ProLiant DL380", "server", 2],
-    ["Console KVM", "other", 1],
-    ["Nobreak APC SRT 10kVA", "ups", 6],
-  ],
-  [
-    ["Storage PowerStore 500T", "storage", 2],
-    ["NAS Synology RS3621", "storage", 2],
-    ["Backup Veeam PowerEdge R650", "server", 1],
-    ["Fita LTO-8 TL1000", "storage", 2],
-  ],
-];
-
-/* Access racks: 12U or 16U wall-mount cabinets with fibre, a switch and a small nobreak. */
-function accessPlan(heightU: 12 | 16, switchLabel: string): RackPlan {
-  return heightU === 16
-    ? [
-        ["DIO 24 fibras", "patch", 1],
-        ["Patch panel 24p", "patch", 1],
-        [switchLabel, "switch", 1],
-        ["Organizador de cabos", "other", 1],
-        ["Nobreak 2kVA", "ups", 2],
-      ]
-    : [
-        ["DIO 12 fibras", "patch", 1],
-        [switchLabel, "switch", 1],
-        ["Nobreak 1kVA", "ups", 2],
-      ];
-}
-
-function buildRack(id: string, name: string, heightU: number, plan: RackPlan, code: string, rand: () => number): Rack {
-  let u = 1;
+function buildRack(id: string, name: string, heightU: number, plan: RackPlan): Rack {
+  // Mounted from the top, like the drawings' faceplates: fibre first, then the switch stack.
+  let u = heightU - 1;
   const units: RackUnit[] = [];
-  // Mount from the bottom, heavy gear (nobreak) first, leaving occasional gaps like a real rack.
-  for (const [label, kind, size] of [...plan].reverse()) {
-    units.push({ start: u, size, label: label.replace("{S}", code), kind });
-    u += size + (rand() < 0.3 && u + size < heightU - 2 ? 1 : 0);
+  for (const [label, kind, size] of plan) {
+    units.push({ start: u - size + 1, size, label, kind });
+    u -= size + 1;
   }
-  return {
-    id,
-    name,
-    heightU,
-    units,
-    powerKw: units.reduce((s, x) => s + (x.kind === "server" ? 0.55 : x.kind === "storage" ? 0.7 : 0.12) * x.size, 0),
-  };
+  return { id, name, heightU, units, powerKw: units.reduce((s, x) => s + (x.kind === "switch" ? 0.09 : 0) * x.size, 0) };
 }
 
-interface RackSpot {
-  code: string;
-  name: string;
-  building: string;
-  switchLabel: string;
+/* A device documented in the plant's Layer 2 drawing, and the room that holds it. */
+export interface RoomDevice {
+  nodeId: string;
+  hostname: string;
+  ip?: string;
+  model?: string;
+  kind: NodeKind;
+  nok?: string;
 }
 
-const GENERIC_RACKS: RackSpot[] = [
-  { code: "RK-ADM", name: "Administrativo", building: "Prédio administrativo", switchLabel: "SW-{S}-ADM-01 C2960-24TC-L" },
-  { code: "RK-BRIT", name: "Britagem", building: "Britagem primária", switchLabel: "SW-{S}-BRIT-01 C2960-24TC-L" },
-  { code: "RK-FORNO", name: "Fornos", building: "Área de calcinação", switchLabel: "SW-{S}-FORNO-01 C9200L-24P-4G" },
-  { code: "RK-EXPED", name: "Expedição", building: "Balança e expedição", switchLabel: "SW-{S}-EXP-01 C2960-24TC-L" },
-  { code: "RK-OFIC", name: "Oficina", building: "Oficina mecânica", switchLabel: "SW-{S}-OFI-01 C2960-24TC-L" },
-  { code: "RK-PORT", name: "Portaria", building: "Portaria principal", switchLabel: "SW-{S}-PORT-01 C2960-24TC-L" },
-];
+export interface RoomLink {
+  id: string;
+  peer: string;
+  medium: Medium;
+  fibers?: number;
+  ports: string;
+  broken: boolean;
+  note?: string;
+}
 
-/* Racks from the plant's Layer 2 drawing: every switch outside the CPD is an access rack. */
-function documentedRacks(site: Site): { spots: RackSpot[]; cpdHost?: string } | null {
-  const topo = TOPOLOGIES.find(
-    (t) => t.code === site.code || (site.city && t.city.toLowerCase().startsWith(site.city.toLowerCase())),
-  );
-  if (!topo) return null;
+/* "C9200L-24T & C9200L-24P" is a stack of two switches, one rack unit each. */
+const stackOf = (model?: string) => (model ? model.split("&").map((m) => m.trim()) : [""]);
+
+const fibre = (m: Medium) => m === "sm" || m === "mm";
+
+interface Spot {
+  node: TopoNode;
+  devices: RoomDevice[];
+  links: RoomLink[];
+  heightU: number;
+  plan: RackPlan;
+}
+
+/*
+ * Rooms of a plant from its Layer 2 drawing: the central switch sits in the CPD and every other
+ * switch is an access rack. APs belong to the room of the switch they hang from.
+ */
+function fromTopology(topo: SiteTopology) {
   // Nodes drawn inside a group belong to another site (BR-ACS shows Limeira's CPD for context).
-  const elsewhere = (n: (typeof topo.nodes)[number]) =>
-    topo.groups?.some((g) => n.x >= g.x && n.x <= g.x + g.w && n.y >= g.y && n.y <= g.y + g.h);
-  const switches = topo.nodes.filter((n) => (n.kind === "switch" || n.kind === "core") && n.hostname && n.ip && !elsewhere(n));
-  // The CPD is the node whose location says so; a plant drawn without one keeps its first core node there.
-  const cpd = switches.find((n) => n.location?.toUpperCase().startsWith("CPD")) ?? switches.find((n) => n.kind === "core");
-  return {
-    cpdHost: cpd?.hostname,
-    spots: switches
-      .filter((n) => n !== cpd && !n.location?.toUpperCase().startsWith("CPD") && !n.locationEn?.toLowerCase().includes("server room"))
-      .map((n) => ({
-        code: n.hostname!,
-        name: n.location ?? n.hostname!,
-        building: n.locationEn ? `${n.location} / ${n.locationEn}` : (n.location ?? ""),
-        switchLabel: `${n.hostname} ${n.model ?? ""}`.trim(),
+  const elsewhere = (n: TopoNode) => topo.groups?.some((g) => n.x >= g.x && n.x <= g.x + g.w && n.y >= g.y && n.y <= g.y + g.h);
+  const switches = topo.nodes.filter((n) => (n.kind === "switch" || n.kind === "core") && n.hostname && !elsewhere(n));
+  // The central switch: the one the drawing places in the CPD, otherwise the plant's first core switch.
+  const core = switches.find((n) => n.location?.toUpperCase().startsWith("CPD")) ?? switches.find((n) => n.kind === "core");
+  if (!core) return null;
+  const byId = new Map(topo.nodes.map((n) => [n.id, n]));
+  const name = (n?: TopoNode) => (n ? (n.hostname ?? n.location ?? n.id) : "?");
+  const peersOf = (n: TopoNode) =>
+    topo.links.filter((l) => l.a.node === n.id || l.b.node === n.id).map((l) => {
+      const [own, other] = l.a.node === n.id ? [l.a, l.b] : [l.b, l.a];
+      return { link: l, own, end: other, other: byId.get(other.node) };
+    });
+
+  const spot = (node: TopoNode, cpd: boolean): Spot => {
+    const peers = peersOf(node);
+    const aps = peers.filter((p) => p.other?.kind === "ap").map((p) => p.other!);
+    const uplinks = peers.filter((p) => p.other?.kind !== "ap");
+    const stack = stackOf(node.model);
+    const fibres = uplinks.filter((p) => fibre(p.link.medium));
+    const fibreCount = fibres.reduce((s, p) => s + (p.link.fibers ?? 0), 0);
+    const plan: RackPlan = [];
+    if (fibres.length) plan.push([fibreCount ? `DIO · ${fibreCount} fibras documentadas` : `DIO · ${fibres.length} cabo(s) óptico(s)`, "patch", 1]);
+    stack.forEach((m, i) => plan.push([`${node.hostname}${stack.length > 1 ? ` #${i + 1}` : ""} ${m}`.trim(), "switch", 1]));
+    return {
+      node,
+      heightU: cpd ? 42 : stack.length > 1 || /-48/.test(node.model ?? "") ? 16 : 12,
+      plan,
+      devices: [node, ...aps].map((n) => ({ nodeId: n.id, hostname: name(n), ip: n.ip, model: n.model, kind: n.kind, nok: n.nok })),
+      links: uplinks.map(({ link, own, end, other }) => ({
+        id: link.id,
+        peer: other?.hostname ? `${other.hostname}${other.location ? ` · ${other.location}` : ""}` : (other?.location ?? other?.id ?? "?"),
+        medium: link.medium,
+        fibers: link.fibers,
+        ports: [own.port, end.port].filter(Boolean).join(" ↔ "),
+        broken: !!link.breaks?.length,
+        note: link.note,
       })),
+    };
+  };
+
+  return {
+    topology: topo.code,
+    cpd: spot(core, true),
+    racks: switches.filter((n) => n !== core).map((n) => spot(n, false)),
   };
 }
 
-/* Racks spread around the CPD on a loose spiral, a few hundred metres apart like a plant's buildings. */
+/* The drawings carry no geography, so racks spread around the CPD on a loose spiral, a few hundred metres apart. */
 function offset(i: number, rand: () => number): [number, number] {
   const angle = i * 2.4 + rand() * 0.5;
   const dist = 0.0035 + i * 0.0011 + rand() * 0.0012;
   return [Math.sin(angle) * dist, Math.cos(angle) * dist * 1.1];
 }
 
+export function topologyOf(site: Site): SiteTopology | undefined {
+  return TOPOLOGIES.find((t) => t.code === site.code || (!!site.city && t.city.toLowerCase().startsWith(site.city.toLowerCase())));
+}
+
 export interface ExplorerSite {
   site: Site;
   lat: number;
   lng: number;
+  topology?: string;
   rooms: Room[];
 }
 
 export function buildExplorer(sites: Site[]): ExplorerSite[] {
   return sites
-    .map((site, siteIndex) => {
+    .map((site): ExplorerSite | null => {
       if (site.latitude === null || site.longitude === null) return null;
       const rand = rng(Math.abs(site.id) * 7349 + 3);
-      const code = site.code.replace(/^BR-/, "");
-      const documented = documentedRacks(site);
-      const cpdRacks = CPD_RACKS.slice(0, siteIndex % 2 === 0 ? 3 : 2).map((plan, j) =>
-        buildRack(`${site.id}-CPD-${j}`, `RK-0${j + 1}`, 42, plan, code, rand),
-      );
+      const topo = topologyOf(site);
+      const plant = topo ? fromTopology(topo) : null;
+      // Only the network rack is documented; the servers and storage rack stays empty until it is.
+      const cpdRacks = [
+        buildRack(`${site.id}-CPD-0`, "RK-01 · Rede", 42, plant?.cpd.plan ?? []),
+        buildRack(`${site.id}-CPD-1`, "RK-02 · Servidores", 42, []),
+      ];
+      const core = plant?.cpd.node;
       const cpd: Room = {
         id: `${site.id}-CPD`,
         siteId: site.id,
         code: "CPD",
         name: "CPD",
         kind: "cpd",
-        building: documented?.cpdHost ? `Prédio administrativo · switch core ${documented.cpdHost}` : "Prédio administrativo · térreo",
+        building: core ? `Switch central ${core.hostname}` : "Sem topologia documentada",
         lat: site.latitude,
         lng: site.longitude,
         temperatureC: 21 + rand() * 2.5,
         humidity: 40 + rand() * 15,
-        powerKw: cpdRacks.reduce((s, r) => s + r.powerKw, 0) * (1.1 + rand() * 0.2),
+        powerKw: 3 + rand() * 3,
         powerCapacityKw: 16,
         upsMinutes: 25 + rand() * 25,
         cooling: "2× ar-condicionado de precisão 12 kW (N+1)",
         access: "Biometria + cartão",
         cameras: rand() < 0.5 ? 1 : 2,
         racks: cpdRacks,
+        topology: plant?.topology,
+        devices: plant?.cpd.devices ?? [],
+        links: plant?.cpd.links ?? [],
       };
-      const spots = documented?.spots ?? GENERIC_RACKS.slice(0, siteIndex % 2 === 0 ? 6 : 5);
-      const racks = spots.map((spot, i): Room => {
-        const heightU = rand() < 0.5 ? 16 : 12;
-        const rack = buildRack(`${site.id}-${spot.code}-0`, spot.code, heightU, accessPlan(heightU, spot.switchLabel), code, rand);
+      const racks = (plant?.racks ?? []).map((spot, i): Room => {
+        const code = spot.node.hostname!;
+        const rack = buildRack(`${site.id}-${code}-0`, code, spot.heightU, spot.plan);
         const [dLat, dLng] = offset(i, rand);
         return {
-          id: `${site.id}-${spot.code}`,
+          id: `${site.id}-${code}`,
           siteId: site.id,
-          code: spot.code,
-          name: `Rack ${spot.name}`,
+          code,
+          name: `Rack ${spot.node.location ?? code}`,
           kind: "rack",
-          building: spot.building,
+          building: spot.node.locationEn ? `${spot.node.location} / ${spot.node.locationEn}` : (spot.node.location ?? ""),
           lat: site.latitude! + dLat,
           lng: site.longitude! + dLng,
           temperatureC: 25 + rand() * 4 + (i === 1 ? 4 : 0),
           humidity: 42 + rand() * 18,
-          powerKw: rack.powerKw * (1.1 + rand() * 0.3),
+          powerKw: 0.25 + rand() * 0.5,
           powerCapacityKw: 1.5,
           upsMinutes: 12 + rand() * 18,
           cooling: rand() < 0.6 ? "Ventilação forçada" : "Ventilação natural",
           access: rand() < 0.5 ? "Chave" : "Cadeado",
           cameras: 0,
           racks: [rack],
+          topology: plant?.topology,
+          devices: spot.devices,
+          links: spot.links,
         };
       });
-      return { site, lat: site.latitude, lng: site.longitude, rooms: [cpd, ...racks] };
+      return { site, lat: site.latitude, lng: site.longitude, topology: plant?.topology, rooms: [cpd, ...racks] };
     })
     .filter((s): s is ExplorerSite => s !== null);
 }

@@ -2626,6 +2626,7 @@ button.port-sq:hover,
 
 .ex-kind.rack {
   color: #5aa9ff;
+  border-radius: 999px;
 }
 
 .ex-unplaced {
@@ -2850,17 +2851,17 @@ button.port-sq:hover,
     0 0 14px var(--c);
 }
 
-/* Access racks: a small square; the CPD keeps the larger round badge. */
+/* Access racks: a small round badge; the CPD is a larger square with slightly rounded corners. */
 .room-marker.rack .room-kind {
   width: 20px;
   height: 20px;
-  border-radius: 4px;
   font-size: 0.5rem;
 }
 
 .room-marker.cpd .room-kind {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
 }
 
 .room-marker.cpd .room-marker-label {
@@ -4682,5 +4683,87 @@ button.port-sq:hover,
   .topo-link-flow,
   .topo-node .topo-status-halo {
     animation: none;
+  }
+}
+
+/* Room page: the room's devices and uplinks, as documented in Topologia. */
+.room-network {
+  margin-bottom: 1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 0.5rem 1.5rem;
+}
+
+.room-network .room-section-title {
+  grid-column: 1 / -1;
+}
+
+.room-network .room-section-title a {
+  font-size: 0.72rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.room-devices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+  align-content: start;
+}
+
+.room-devices li {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: center;
+  gap: 0.1rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.room-devices li > .mono.muted,
+.room-device-nok {
+  grid-column: 2 / -1;
+  font-size: 0.7rem;
+}
+
+.room-device-nok {
+  color: var(--crit);
+}
+
+.room-devices a {
+  color: var(--text);
+}
+
+.room-links {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.76rem;
+  align-self: start;
+}
+
+.room-links th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+  padding: 0 0.5rem 0.35rem 0;
+}
+
+.room-links td {
+  padding: 0.3rem 0.5rem 0.3rem 0;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.room-links .topo-pill {
+  margin-left: 0.5rem;
+}
+
+@media (max-width: 800px) {
+  .room-network {
+    grid-template-columns: 1fr;
   }
 }
