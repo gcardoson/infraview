@@ -7,18 +7,28 @@ access points, servidores e telefonia.
 
 Primeira fase: **inventário**. A interface é organizada por camadas. Prontas até agora:
 
-**Explorer** (`/explorer`, a tela inicial), com salas e racks fictícios por enquanto:
+**Explorer** (`/explorer`, a tela inicial), montado a partir da Topologia, com sensores simulados por enquanto:
 
 - mapa escuro (Leaflet) com um marcador por site. O mapa base vem de serviços públicos e
-  gratuitos, sem chave de API (Esri e OpenStreetMap; a CARTO passou a exigir chave), tentados em ordem até um responder,
-  com seletor no canto do mapa; se a rede bloquear todos, ficam os contornos offline de países,
-  estados e rios (Natural Earth), servidos pelo próprio InfraView. Cada site aparece na posição cadastrada em Sites (latitude e longitude); aproximando, aparecem os
-  datacenters, salas técnicas e armários de rede do site;
-- busca por site, sala ou equipamento, indicadores de saúde e a lista de salas de cada site;
-- ao abrir uma sala (`/explorer/sala/<id>`): relógio e dados do controlador, sensores de presença,
-  porta, água e fumaça, log de eventos ao vivo, medidores e gráficos de 24 h (temperatura e umidade
-  no corredor frio e no interior, tensão, potência e consumo dos racks, CO₂ e PM2.5), quatro
-  câmeras simuladas e a elevação de cada rack.
+  gratuitos, sem chave de API (Esri e OpenStreetMap; a CARTO passou a exigir chave), tentados em
+  ordem até um responder, com seletor no canto do mapa; se a rede bloquear todos, ficam os
+  contornos offline de países, estados e rios (Natural Earth), servidos pelo próprio InfraView.
+  Cada site aparece na posição cadastrada em Sites (latitude e longitude);
+- aproximando, aparecem os dois tipos de objeto de cada planta, vindos do desenho da Topologia: o
+  **CPD** (quadrado de cantos arredondados), onde fica o switch central, e os **racks** de acesso
+  (círculo), um por switch restante do desenho. Os racks do CPD têm 42U; os de acesso têm 16U
+  quando o switch é empilhado ou de 48 portas e 12U nos demais. Os racks mostram o que o desenho
+  documenta (DIO quando há fibra e os switches); os APs ficam na sala do switch a que se ligam;
+- no mapa, os racks e os pontos passivos (subestação, passagens de cabo) mantêm a disposição do
+  desenho em volta do CPD, e as linhas entre eles são os enlaces da Topologia, com a cor do meio
+  (SM, MM, UTP), tracejado vermelho quando interrompidos e o status simulado compartilhado com a
+  Topologia; passando o mouse, aparecem meio, fibras, portas, anel e observações. A disposição é
+  esquemática, porque o desenho não tem geografia;
+- no painel de cada CPD ou rack, o quadro **Rede** lista os switches e APs com o status (o mesmo da
+  Topologia) e os enlaces com meio, fibras e portas, com link para o ativo na Topologia;
+- ao abrir um CPD ou rack (`/explorer/sala/<id>`): relógio e dados do controlador, sensores,
+  log de eventos ao vivo, medidores e gráficos de 24 h (temperatura e umidade, tensão, potência e
+  consumo; no CPD também corredor frio, CO₂ e PM2.5), câmeras do CPD e a elevação dos racks.
 
 **Layer 4 · Rede WAN**:
 
@@ -38,6 +48,17 @@ Primeira fase: **inventário**. A interface é organizada por camadas. Prontas a
   10 Mbps, cinza desabilitada;
 - indicadores de saúde, filtro "somente com problemas", detalhes da porta e do switch ao clicar,
   alertas e log de eventos.
+
+**Topologia** (`/topologia`), a camada 2 de cada planta, adaptada dos desenhos oficiais do Visio
+(BR-MAT rev. 2 e BR-ACS rev. 2):
+
+- desenho com os ativos, as salas sem ativo (passagem de cabo) e todos os enlaces: fibra SM ou MM
+  com a quantidade de fibras, UTP, rádio, conectores (SFP Cisco, conversor, injetor PoE), anéis
+  ópticos, conexões interrompidas e observações em vermelho do desenho (baseline pendente, STP a
+  ser ativado);
+- um marcador de status em cada equipamento (online, degradado, offline), por enquanto simulado;
+- ao passar o mouse ou clicar, os detalhes do ativo e das portas; abaixo, a tabela com a
+  documentação de todos os enlaces da planta.
 
 **Servidores** (`/servidores`), com dados fictícios por enquanto, organizada em três colunas por
 cluster de virtualização:
@@ -139,6 +160,7 @@ backend/
   alembic/              migrações do banco
   tests/                testes da API
 frontend/
+  src/topology/         Topologia: camada 2 das plantas (desenho, status, documentação dos enlaces)
   src/explorer/         Explorer: mapa dos sites, salas técnicas, painel da sala e racks
   src/wan/              tela Layer 4 · Rede WAN (topologia, painéis, simulação, formulário)
   src/lan/              tela Layer 3 · Switches (grade de portas e dados fictícios)

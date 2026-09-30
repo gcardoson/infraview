@@ -52,7 +52,7 @@ export function ArcGauge({ spec, value, max }: { spec: MetricSpec; value: number
           {spec.min}
         </text>
         <text x="104" y="90" className="gauge-scale end">
-          {top}
+          {String(top).replace(".", ",")}
         </text>
       </svg>
       <span className="gauge-label">{spec.label}</span>
