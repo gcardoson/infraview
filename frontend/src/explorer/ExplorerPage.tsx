@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { type ExplorerSite, type Health, KIND_SHORT, roomHealth, usedU, worstHealth } from "./data";
+import { TOPOLOGIES } from "../topology/data";
+import { useTopologiesStatus } from "../topology/status";
 import { SiteMap } from "./SiteMap";
 import { useExplorer } from "./useExplorer";
 
@@ -12,6 +14,7 @@ const siteHealth = (s: ExplorerSite) => worstHealth(s.rooms.map(roomHealth));
 export function ExplorerPage() {
   const [params, setParams] = useSearchParams();
   const { sites, source, explorer } = useExplorer();
+  const health = useTopologiesStatus(TOPOLOGIES);
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [resetKey, setResetKey] = useState(0);
@@ -131,6 +134,7 @@ export function ExplorerPage() {
           onSelectSite={(id) => select({ site: id })}
           onSelectRoom={(id) => select({ site: explorer.find((x) => x.rooms.some((r) => r.id === id))?.site.id, room: id })}
           resetKey={resetKey}
+          health={health}
         />
         <div className="ex-toolbar">
           <span

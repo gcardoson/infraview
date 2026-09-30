@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Site } from "../api";
-import { type Medium, type NodeKind, type SiteTopology, TOPOLOGIES, type TopoNode } from "../topology/data";
+import { type Medium, type NodeKind, type SiteTopology, TOPOLOGIES, type TopoLink, type TopoNode } from "../topology/data";
 
 /*
  * What the map shows at each plant: one CPD (core equipment, telecom and link hand-off, servers,
@@ -45,6 +45,8 @@ export interface Room {
   access: string;
   cameras: number;
   racks: Rack[];
+  /* Topology node of the room's switch. */
+  nodeId?: string;
   /* Code of the Topologia drawing the room's devices come from. */
   topology?: string;
   devices: RoomDevice[];
@@ -72,12 +74,14 @@ export function roomIssues(room: Room): { level: Health; text: string }[] {
   // Access racks sit in industrial areas without precision cooling, so they tolerate more heat than the CPD.
   const [warnC, critC] = room.kind === "cpd" ? [27, 30] : [32, 35];
   if (room.temperatureC >= critC) issues.push({ level: "crit", text: `Temperatura crítica: ${room.temperatureC.toFixed(1)} °C` });
-  else if (room.temperatureC >= warnC) issues.push({ level: "warn", text: `Temperatura alta: ${room.temperatureC.toFixed(1)} °C` });
+  else if (room.temperatureC >= warnC)
+    issues.push({ level: "warn", text: `Temperatura alta: ${room.temperatureC.toFixed(1)} °C` });
   const load = room.powerKw / room.powerCapacityKw;
   if (load >= 0.9) issues.push({ level: "crit", text: `Carga elétrica em ${Math.round(load * 100)}%` });
   else if (load >= 0.8) issues.push({ level: "warn", text: `Carga elétrica em ${Math.round(load * 100)}%` });
   if (room.humidity >= 70) issues.push({ level: "warn", text: `Umidade alta: ${Math.round(room.humidity)}%` });
-  if (room.upsMinutes < 10) issues.push({ level: "warn", text: `Autonomia do nobreak baixa: ${Math.round(room.upsMinutes)} min` });
+  if (room.upsMinutes < 10)
+    issues.push({ level: "warn", text: `Autonomia do nobreak baixa: ${Math.round(room.upsMinutes)} min` });
   return issues;
 }
 
@@ -162,10 +166,12 @@ function fromTopology(topo: SiteTopology) {
   const byId = new Map(topo.nodes.map((n) => [n.id, n]));
   const name = (n?: TopoNode) => (n ? (n.hostname ?? n.location ?? n.id) : "?");
   const peersOf = (n: TopoNode) =>
-    topo.links.filter((l) => l.a.node === n.id || l.b.node === n.id).map((l) => {
-      const [own, other] = l.a.node === n.id ? [l.a, l.b] : [l.b, l.a];
-      return { link: l, own, end: other, other: byId.get(other.node) };
-    });
+    topo.links
+      .filter((l) => l.a.node === n.id || l.b.node === n.id)
+      .map((l) => {
+        const [own, other] = l.a.node === n.id ? [l.a, l.b] : [l.b, l.a];
+        return { link: l, own, end: other, other: byId.get(other.node) };
+      });
 
   const spot = (node: TopoNode, cpd: boolean): Spot => {
     const peers = peersOf(node);
@@ -175,16 +181,30 @@ function fromTopology(topo: SiteTopology) {
     const fibres = uplinks.filter((p) => fibre(p.link.medium));
     const fibreCount = fibres.reduce((s, p) => s + (p.link.fibers ?? 0), 0);
     const plan: RackPlan = [];
-    if (fibres.length) plan.push([fibreCount ? `DIO · ${fibreCount} fibras documentadas` : `DIO · ${fibres.length} cabo(s) óptico(s)`, "patch", 1]);
+    if (fibres.length)
+      plan.push([
+        fibreCount ? `DIO · ${fibreCount} fibras documentadas` : `DIO · ${fibres.length} cabo(s) óptico(s)`,
+        "patch",
+        1,
+      ]);
     stack.forEach((m, i) => plan.push([`${node.hostname}${stack.length > 1 ? ` #${i + 1}` : ""} ${m}`.trim(), "switch", 1]));
     return {
       node,
       heightU: cpd ? 42 : stack.length > 1 || /-48/.test(node.model ?? "") ? 16 : 12,
       plan,
-      devices: [node, ...aps].map((n) => ({ nodeId: n.id, hostname: name(n), ip: n.ip, model: n.model, kind: n.kind, nok: n.nok })),
+      devices: [node, ...aps].map((n) => ({
+        nodeId: n.id,
+        hostname: name(n),
+        ip: n.ip,
+        model: n.model,
+        kind: n.kind,
+        nok: n.nok,
+      })),
       links: uplinks.map(({ link, own, end, other }) => ({
         id: link.id,
-        peer: other?.hostname ? `${other.hostname}${other.location ? ` · ${other.location}` : ""}` : (other?.location ?? other?.id ?? "?"),
+        peer: other?.hostname
+          ? `${other.hostname}${other.location ? ` · ${other.location}` : ""}`
+          : (other?.location ?? other?.id ?? "?"),
         medium: link.medium,
         fibers: link.fibers,
         ports: [own.port, end.port].filter(Boolean).join(" ↔ "),
@@ -194,22 +214,101 @@ function fromTopology(topo: SiteTopology) {
     };
   };
 
+  // The drawings carry no geography, so the map keeps the drawing's layout around the CPD, scaled so
+  // the plant spans about 2 km. Passive points (substations, bypasses) stay as waypoints of the links.
+  const placed = [...switches, ...topo.nodes.filter((n) => n.kind === "passive" && !elsewhere(n))];
+  const centre = (n: TopoNode) => [n.x + n.w / 2, n.y + n.h / 2];
+  const [cx, cy] = centre(core);
+  const span = Math.max(1, ...placed.map((n) => centre(n)[0])) - Math.min(...placed.map((n) => centre(n)[0]));
+  const metres = 2000 / span;
+  // The drawings are wide and short; stretching the rows apart keeps labels readable on the map.
+  const layout = new Map(
+    placed.map((n) => [n.id, [(centre(n)[0] - cx) * metres, -(centre(n)[1] - cy) * metres * 1.6] as [number, number]]),
+  );
+
+  // One line per pair of places; parallel cables (two fibres to the same building) share it.
+  const connections = new Map<string, PlantConnection>();
+  for (const link of topo.links) {
+    if (!layout.has(link.a.node) || !layout.has(link.b.node)) continue;
+    const [a, b] = [link.a.node, link.b.node].sort();
+    const key = `${a}~${b}`;
+    const entry = connections.get(key) ?? {
+      id: key,
+      a,
+      b,
+      links: [],
+      path: route(layout.get(a)!, layout.get(b)!, [...layout.values()]),
+    };
+    entry.links.push(link);
+    connections.set(key, entry);
+  }
+
   return {
     topology: topo.code,
     cpd: spot(core, true),
     racks: switches.filter((n) => n !== core).map((n) => spot(n, false)),
+    passives: placed.filter((n) => n.kind === "passive"),
+    layout,
+    connections: [...connections.values()],
   };
 }
 
-/* The drawings carry no geography, so racks spread around the CPD on a loose spiral, a few hundred metres apart. */
-function offset(i: number, rand: () => number): [number, number] {
-  const angle = i * 2.4 + rand() * 0.5;
-  const dist = 0.0035 + i * 0.0011 + rand() * 0.0012;
-  return [Math.sin(angle) * dist, Math.cos(angle) * dist * 1.1];
+/* A line on the map between two places of a plant, carrying every documented cable between them. */
+export interface PlantConnection {
+  id: string;
+  a: string;
+  b: string;
+  links: TopoLink[];
+  /* Metres east/north of the CPD inside fromTopology; latitude/longitude once placed on the map. */
+  path: [number, number][];
 }
 
+type Xy = [number, number];
+
+/*
+ * A straight line, unless it would run over another place (a ring along a row of racks): then it arcs
+ * away from that place, so the map never suggests a connection the drawing doesn't have.
+ */
+function route(a: Xy, b: Xy, places: Xy[]): Xy[] {
+  const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
+  const length = Math.hypot(dx, dy) || 1;
+  const blocking = places.filter((p) => {
+    if (p === a || p === b) return false;
+    const t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (length * length);
+    if (t <= 0.02 || t >= 0.98) return false;
+    return Math.abs((p[0] - a[0]) * dy - (p[1] - a[1]) * dx) / length < 45;
+  });
+  if (!blocking.length) return [a, b];
+  // Bend to the side away from the places in the way (upwards for a horizontal row).
+  const [nx, ny] = [-dy / length, dx / length];
+  const side = blocking.reduce((s, p) => s + (p[0] - a[0]) * nx + (p[1] - a[1]) * ny, 0) > 0 ? -1 : 1;
+  const bend = Math.min(220, 0.18 * length) * side;
+  const control: Xy = [(a[0] + b[0]) / 2 + nx * bend * 2, (a[1] + b[1]) / 2 + ny * bend * 2];
+  return Array.from({ length: 21 }, (_, i) => {
+    const t = i / 20;
+    const u = 1 - t;
+    return [u * u * a[0] + 2 * u * t * control[0] + t * t * b[0], u * u * a[1] + 2 * u * t * control[1] + t * t * b[1]] as Xy;
+  });
+}
+
+/* A passive point of the drawing: a building the cable passes through, with no switch. */
+export interface Waypoint {
+  nodeId: string;
+  name: string;
+  bypass: boolean;
+  lat: number;
+  lng: number;
+}
+
+const toLatLng = (lat: number, lng: number, [east, north]: [number, number]): [number, number] => [
+  lat + north / 111_320,
+  lng + east / (111_320 * Math.cos((lat * Math.PI) / 180)),
+];
+
 export function topologyOf(site: Site): SiteTopology | undefined {
-  return TOPOLOGIES.find((t) => t.code === site.code || (!!site.city && t.city.toLowerCase().startsWith(site.city.toLowerCase())));
+  return TOPOLOGIES.find(
+    (t) => t.code === site.code || (!!site.city && t.city.toLowerCase().startsWith(site.city.toLowerCase())),
+  );
 }
 
 export interface ExplorerSite {
@@ -218,6 +317,10 @@ export interface ExplorerSite {
   lng: number;
   topology?: string;
   rooms: Room[];
+  waypoints: Waypoint[];
+  /* Positions of every placed node (rooms and waypoints) by topology node id. */
+  positions: Record<string, [number, number]>;
+  connections: PlantConnection[];
 }
 
 export function buildExplorer(sites: Site[]): ExplorerSite[] {
@@ -251,6 +354,7 @@ export function buildExplorer(sites: Site[]): ExplorerSite[] {
         access: "Biometria + cartão",
         cameras: rand() < 0.5 ? 1 : 2,
         racks: cpdRacks,
+        nodeId: core?.id,
         topology: plant?.topology,
         devices: plant?.cpd.devices ?? [],
         links: plant?.cpd.links ?? [],
@@ -258,7 +362,7 @@ export function buildExplorer(sites: Site[]): ExplorerSite[] {
       const racks = (plant?.racks ?? []).map((spot, i): Room => {
         const code = spot.node.hostname!;
         const rack = buildRack(`${site.id}-${code}-0`, code, spot.heightU, spot.plan);
-        const [dLat, dLng] = offset(i, rand);
+        const [lat, lng] = toLatLng(site.latitude!, site.longitude!, plant!.layout.get(spot.node.id)!);
         return {
           id: `${site.id}-${code}`,
           siteId: site.id,
@@ -266,8 +370,8 @@ export function buildExplorer(sites: Site[]): ExplorerSite[] {
           name: `Rack ${spot.node.location ?? code}`,
           kind: "rack",
           building: spot.node.locationEn ? `${spot.node.location} / ${spot.node.locationEn}` : (spot.node.location ?? ""),
-          lat: site.latitude! + dLat,
-          lng: site.longitude! + dLng,
+          lat,
+          lng,
           temperatureC: 25 + rand() * 4 + (i === 1 ? 4 : 0),
           humidity: 42 + rand() * 18,
           powerKw: 0.25 + rand() * 0.5,
@@ -277,12 +381,34 @@ export function buildExplorer(sites: Site[]): ExplorerSite[] {
           access: rand() < 0.5 ? "Chave" : "Cadeado",
           cameras: 0,
           racks: [rack],
+          nodeId: spot.node.id,
           topology: plant?.topology,
           devices: spot.devices,
           links: spot.links,
         };
       });
-      return { site, lat: site.latitude, lng: site.longitude, topology: plant?.topology, rooms: [cpd, ...racks] };
+      const positions = Object.fromEntries(
+        [...(plant?.layout ?? [])].map(([id, offset]) => [id, toLatLng(site.latitude!, site.longitude!, offset)]),
+      );
+      return {
+        site,
+        lat: site.latitude,
+        lng: site.longitude,
+        topology: plant?.topology,
+        rooms: [cpd, ...racks],
+        waypoints: (plant?.passives ?? []).map((n) => ({
+          nodeId: n.id,
+          name: n.location ?? n.id,
+          bypass: !!n.bypass,
+          lat: positions[n.id][0],
+          lng: positions[n.id][1],
+        })),
+        positions,
+        connections: (plant?.connections ?? []).map((c) => ({
+          ...c,
+          path: c.path.map((offset) => toLatLng(site.latitude!, site.longitude!, offset)),
+        })),
+      };
     })
     .filter((s): s is ExplorerSite => s !== null);
 }
@@ -305,7 +431,10 @@ export function useExplorerSimulation(initial: ExplorerSite[], tickMs = 2500) {
         rooms: s.rooms.map((room) => {
           const target = room.kind === "cpd" ? 22 : 27;
           const spike = Math.random() < 0.02 ? 4 + Math.random() * 3 : 0;
-          const temperatureC = Math.max(18, Math.min(38, room.temperatureC + (target - room.temperatureC) * 0.08 + (Math.random() - 0.5) * 0.6 + spike));
+          const temperatureC = Math.max(
+            18,
+            Math.min(38, room.temperatureC + (target - room.temperatureC) * 0.08 + (Math.random() - 0.5) * 0.6 + spike),
+          );
           return {
             ...room,
             temperatureC,

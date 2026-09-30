@@ -4767,3 +4767,210 @@ button.port-sq:hover,
     grid-template-columns: 1fr;
   }
 }
+
+/* Explorer: links between the CPD, racks and passive points, from the Topologia drawing. */
+.site-map:not(.show-rooms) .leaflet-links-pane {
+  display: none;
+}
+
+.ex-link {
+  stroke: #4f8dff;
+  stroke-linecap: round;
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+
+.ex-link:hover {
+  opacity: 1;
+  stroke-width: 6;
+}
+
+.ex-link.mm {
+  stroke: var(--warn);
+}
+
+.ex-link.utp {
+  stroke: #8d9aa1;
+}
+
+.ex-link.wireless {
+  stroke: var(--ok);
+  stroke-dasharray: 8 5;
+}
+
+.ex-link.down {
+  stroke: var(--crit);
+  stroke-dasharray: 7 6;
+  opacity: 0.7;
+}
+
+.ex-link-flow {
+  stroke: #fff;
+  stroke-dasharray: 2 26;
+  opacity: 0.45;
+  animation: topo-flow 2.4s linear infinite;
+}
+
+.ex-link-flow.degraded {
+  stroke: var(--warn);
+  opacity: 0.9;
+  animation-duration: 5s;
+}
+
+.ex-link-flow.down {
+  display: none;
+}
+
+.pass-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: none;
+  align-items: center;
+  gap: 0.35rem;
+  pointer-events: none;
+}
+
+.show-rooms .pass-marker {
+  display: flex;
+}
+
+.pass-kind {
+  width: 10px;
+  height: 10px;
+  margin: 0 3px;
+  transform: rotate(45deg);
+  border: 2px solid var(--text-2);
+  background: var(--bg);
+}
+
+.pass-marker .room-marker-label {
+  color: var(--text-2);
+  font-size: 0.62rem;
+}
+
+.leaflet-tooltip.ex-link-tooltip {
+  background: rgba(16, 20, 23, 0.96);
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  color: var(--text);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  padding: 0.55rem 0.7rem;
+  max-width: 320px;
+  white-space: normal;
+}
+
+.leaflet-tooltip-top.ex-link-tooltip::before {
+  border-top-color: var(--line-2);
+}
+
+.ex-link-tip {
+  font-size: 0.72rem;
+  display: grid;
+  gap: 0.35rem;
+  min-width: 220px;
+}
+
+.ex-link-tip-head {
+  font-weight: 600;
+}
+
+.ex-link-tip-state {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ok);
+}
+
+.ex-link-tip-state.degraded {
+  color: var(--warn);
+}
+
+.ex-link-tip-state.down {
+  color: var(--crit);
+}
+
+.ex-link-tip ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.ex-link-tip li {
+  display: grid;
+  gap: 0.1rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--line);
+}
+
+.ex-link-tip li span {
+  color: var(--text-2);
+}
+
+.ex-link-tip li .crit {
+  color: var(--crit);
+}
+
+.ex-map-legend {
+  position: absolute;
+  left: 50%;
+  top: 16px;
+  transform: translateX(-50%);
+  z-index: 500;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.9rem;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: rgba(16, 20, 23, 0.92);
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.site-map:not(.show-rooms) + .ex-map-legend {
+  display: none;
+}
+
+.ex-map-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ex-map-legend .ln {
+  width: 18px;
+  height: 0;
+  border-top: 2.5px solid #4f8dff;
+}
+
+.ex-map-legend .ln.mm {
+  border-color: var(--warn);
+}
+
+.ex-map-legend .ln.utp {
+  border-color: #8d9aa1;
+}
+
+.ex-map-legend .ln.down {
+  border-top: 2.5px dashed var(--crit);
+}
+
+.ex-map-legend .pk {
+  width: 8px;
+  height: 8px;
+  transform: rotate(45deg);
+  border: 2px solid var(--text-2);
+}
+
+@media (max-width: 900px) {
+  .ex-map-legend {
+    left: 16px;
+    right: 16px;
+    transform: none;
+    white-space: normal;
+  }
+}

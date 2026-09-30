@@ -18,8 +18,12 @@ Primeira fase: **inventário**. A interface é organizada por camadas. Prontas a
   **CPD** (quadrado de cantos arredondados), onde fica o switch central, e os **racks** de acesso
   (círculo), um por switch restante do desenho. Os racks do CPD têm 42U; os de acesso têm 16U
   quando o switch é empilhado ou de 48 portas e 12U nos demais. Os racks mostram o que o desenho
-  documenta (DIO quando há fibra e os switches); os APs ficam na sala do switch a que se ligam. A
-  posição dos racks no mapa é ilustrativa, porque o desenho não tem geografia;
+  documenta (DIO quando há fibra e os switches); os APs ficam na sala do switch a que se ligam;
+- no mapa, os racks e os pontos passivos (subestação, passagens de cabo) mantêm a disposição do
+  desenho em volta do CPD, e as linhas entre eles são os enlaces da Topologia, com a cor do meio
+  (SM, MM, UTP), tracejado vermelho quando interrompidos e o status simulado compartilhado com a
+  Topologia; passando o mouse, aparecem meio, fibras, portas, anel e observações. A disposição é
+  esquemática, porque o desenho não tem geografia;
 - no painel de cada CPD ou rack, o quadro **Rede** lista os switches e APs com o status (o mesmo da
   Topologia) e os enlaces com meio, fibras e portas, com link para o ativo na Topologia;
 - ao abrir um CPD ou rack (`/explorer/sala/<id>`): relógio e dados do controlador, sensores,

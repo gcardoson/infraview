@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { SiteTopology, TopoLink, TopoNode } from "./data";
 
 /* Simulated device status, until the LibreNMS/PRTG collection feeds real reachability. */
@@ -51,36 +51,43 @@ function initial(topology: SiteTopology): Record<string, NodeHealth> {
   for (const node of topology.nodes.filter(hasDevice)) {
     const r = rand();
     const since = new Date(now - (5 + rand() * 600) * 60_000);
-    if (isolated(node, topology.links)) out[node.id] = { status: "offline", reason: "Sem resposta: todos os enlaces documentados estão interrompidos", since };
+    if (isolated(node, topology.links))
+      out[node.id] = { status: "offline", reason: "Sem resposta: todos os enlaces documentados estão interrompidos", since };
     else if (node.kind !== "core" && r < 0.05) out[node.id] = { status: "offline", reason: "Sem resposta ao ping", since };
-    else if (r < 0.14) out[node.id] = { status: "degraded", reason: DEGRADED_REASONS[Math.floor(rand() * DEGRADED_REASONS.length)], since };
+    else if (r < 0.14)
+      out[node.id] = { status: "degraded", reason: DEGRADED_REASONS[Math.floor(rand() * DEGRADED_REASONS.length)], since };
     else out[node.id] = { status: "online", since };
   }
   return out;
 }
 
-export function useTopologyStatus(topology: SiteTopology, tickMs = 6000) {
-  const [health, setHealth] = useState(() => initial(topology));
+/* Status of several plants at once (the Explorer map shows every plant's links). */
+export function useTopologiesStatus(topologies: SiteTopology[], tickMs = 6000) {
+  const [health, setHealth] = useState(() => Object.fromEntries(topologies.map((t) => [t.code, initial(t)])));
   const current = useRef(health);
 
   useEffect(() => {
-    const next = initial(topology);
+    const next = Object.fromEntries(topologies.map((t) => [t.code, initial(t)]));
     current.current = next;
     setHealth(next);
-  }, [topology]);
+  }, [topologies]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      const ids = Object.keys(current.current).filter((id) => {
+      if (!topologies.length || Math.random() > 0.45) return;
+      const topology = topologies[Math.floor(Math.random() * topologies.length)];
+      const plant = current.current[topology.code] ?? {};
+      const ids = Object.keys(plant).filter((id) => {
         const node = topology.nodes.find((n) => n.id === id);
         return node && !isolated(node, topology.links);
       });
-      if (!ids.length || Math.random() > 0.45) return;
+      if (!ids.length) return;
       const id = ids[Math.floor(Math.random() * ids.length)];
-      const prev = current.current[id];
+      const prev = plant[id];
       const r = Math.random();
       // Mostly recover; now and then something degrades or drops.
-      const status: DeviceStatus = prev.status !== "online" ? (r < 0.7 ? "online" : prev.status) : r < 0.8 ? "degraded" : "offline";
+      const status: DeviceStatus =
+        prev.status !== "online" ? (r < 0.7 ? "online" : prev.status) : r < 0.8 ? "degraded" : "offline";
       if (status === prev.status) return;
       const reason =
         status === "degraded"
@@ -88,14 +95,21 @@ export function useTopologyStatus(topology: SiteTopology, tickMs = 6000) {
           : status === "offline"
             ? "Sem resposta ao ping"
             : undefined;
-      const next = { ...current.current, [id]: { status, reason, since: new Date() } };
+      const next = { ...current.current, [topology.code]: { ...plant, [id]: { status, reason, since: new Date() } } };
       current.current = next;
       setHealth(next);
     }, tickMs);
     return () => window.clearInterval(timer);
-  }, [topology, tickMs]);
+  }, [topologies, tickMs]);
 
   return health;
+}
+
+export function useTopologyStatus(topology: SiteTopology, tickMs = 6000) {
+  const list = useMemo(() => [topology], [topology]);
+  // Right after a plant switch the state still holds the previous plant for one render.
+  const fallback = useMemo(() => initial(topology), [topology]);
+  return useTopologiesStatus(list, tickMs)[topology.code] ?? fallback;
 }
 
 export function linkState(link: TopoLink, health: Record<string, NodeHealth>): LinkState {
