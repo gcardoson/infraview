@@ -121,7 +121,8 @@ export function PortTooltip({
         <div className="tt-card">
           <div className="tt-head">
             <span className="tt-title mono">
-              {sw.hostname} <span className="tt-port">· {port.name}</span>
+              {sw.hostname}
+              {sw.member ? ` #${sw.member}` : ""} <span className="tt-port">· {port.name}</span>
             </span>
             <span className={`tt-state ${color}`}>{COLOR_LABEL[color]}</span>
           </div>

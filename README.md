@@ -38,17 +38,6 @@ Primeira fase: **inventário**. A interface é organizada por camadas. Prontas a
 - topologia animada (operadoras → SD-WAN → core/LAN), painéis de tráfego, latência, alertas e
   disponibilidade, e um log de eventos.
 
-**Layer 3 · Switches** (`/lan`), com dados fictícios por enquanto:
-
-- switches agrupados por site (grupos recolhíveis), um quadrado por porta, no formato do painel
-  do switch: ímpares em cima e pares embaixo (01/02 … 23/24); switches de 48 portas mostram dois
-  blocos de 24 lado a lado; só as duas primeiras e as duas últimas portas de cada bloco levam
-  etiqueta; os uplinks ficam nas colunas U1–U4;
-- cores: verde conectada, amarela em alerta ou 100 Mbps, vermelha desconectada, com erro ou
-  10 Mbps, cinza desabilitada;
-- indicadores de saúde, filtro "somente com problemas", detalhes da porta e do switch ao clicar,
-  alertas e log de eventos.
-
 **Topologia** (`/topologia`), a camada 2 de cada planta, adaptada dos desenhos oficiais do Visio
 (BR-MAT rev. 2 e BR-ACS rev. 2):
 
@@ -57,8 +46,15 @@ Primeira fase: **inventário**. A interface é organizada por camadas. Prontas a
   ópticos, conexões interrompidas e observações em vermelho do desenho (baseline pendente, STP a
   ser ativado);
 - um marcador de status em cada equipamento (online, degradado, offline), por enquanto simulado;
-- ao passar o mouse ou clicar, os detalhes do ativo e das portas; abaixo, a tabela com a
-  documentação de todos os enlaces da planta.
+- ao passar o mouse ou clicar, os detalhes do ativo e das portas; abaixo, a tabela recolhível com
+  a documentação de todos os enlaces da planta;
+- no fim da página, os **switches** da planta porta a porta (a antiga tela L3 · Switches, `/lan`
+  agora leva para cá): um quadrado por porta no formato do painel do switch (ímpares em cima,
+  pares embaixo, blocos de 24, uplinks à direita), pilhas em uma linha por membro, cores verde
+  conectada, amarela em alerta ou 100 Mbps (exceto portas FastEthernet), vermelha desconectada,
+  com erro ou 10 Mbps, cinza desabilitada. As portas dos enlaces do desenho têm contorno azul e
+  descrevem o vizinho, o meio e as fibras; as demais são simuladas. Clicar em um switch no desenho
+  mostra só ele; clicar num enlace mostra os switches das duas pontas; Ctrl+clique soma switches.
 
 **Servidores** (`/servidores`), com dados fictícios por enquanto, organizada em três colunas por
 cluster de virtualização:
@@ -163,7 +159,7 @@ frontend/
   src/topology/         Topologia: camada 2 das plantas (desenho, status, documentação dos enlaces)
   src/explorer/         Explorer: mapa dos sites, salas técnicas, painel da sala e racks
   src/wan/              tela Layer 4 · Rede WAN (topologia, painéis, simulação, formulário)
-  src/lan/              tela Layer 3 · Switches (grade de portas e dados fictícios)
+  src/lan/              portas dos switches (cores, simulação e tooltip), usadas na Topologia
   src/servers/          tela Servidores (CPU, memória e armazenamento do cluster)
   src/pages/            cadastro de sites
   src/components/       layout, relógio, modal

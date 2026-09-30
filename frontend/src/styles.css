@@ -5001,3 +5001,112 @@ button.port-sq:hover,
     white-space: normal;
   }
 }
+
+/* Topologia: the plant's switches, port by port, under the drawing (formerly L3 · Switches). */
+.topo-switches {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.topo-switches .lan-grid {
+  margin-bottom: 0;
+}
+
+.topo-switches-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.2rem;
+}
+
+.topo-switches-head .room-section-title {
+  margin: 0;
+}
+
+.topo-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.topo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.25rem 0.15rem 0.5rem;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 0.72rem;
+}
+
+.topo-chip button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--text);
+  cursor: pointer;
+  font-size: inherit;
+}
+
+.topo-chip .topo-chip-x {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: var(--text-2);
+}
+
+.topo-chip .topo-chip-x:hover {
+  background: var(--line-2);
+  color: var(--text);
+}
+
+.topo-switch-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.8rem;
+  margin-left: auto;
+  font-size: 0.74rem;
+}
+
+.topo-switch-kpis .ok {
+  color: var(--ok);
+}
+
+.topo-switch-kpis .warn {
+  color: var(--warn);
+}
+
+.topo-switch-kpis .crit {
+  color: var(--crit);
+}
+
+/* Ports that carry a link from the drawing get a blue ring. */
+.port-sq.documented {
+  box-shadow: 0 0 0 1.5px #4f8dff;
+}
+
+.switch-row.offline .col-port {
+  opacity: 0.45;
+}
+
+.switch-name .topo-dot {
+  flex: none;
+}
+
+.topo-table-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.topo-table-toggle .chevron {
+  color: var(--text-2);
+}

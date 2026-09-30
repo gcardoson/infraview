@@ -10,7 +10,8 @@ interface Props {
   health: Record<string, NodeHealth>;
   selected: Selection;
   hovered: Selection;
-  onSelect: (s: Selection) => void;
+  /* The event lets the page tell a plain click from Ctrl/Shift+click (add to the selection). */
+  onSelect: (s: Selection, e?: React.MouseEvent) => void;
   onHover: (s: Selection, e?: React.MouseEvent) => void;
 }
 
@@ -73,7 +74,7 @@ function LinkShape({ link, state, active, onSelect, onHover }: { link: TopoLink;
       className={`topo-link ${link.medium} ${state}${active ? " active" : ""}`}
       onClick={(e) => {
         e.stopPropagation();
-        onSelect(select);
+        onSelect(select, e);
       }}
       onMouseMove={(e) => onHover(select, e)}
       onMouseLeave={() => onHover(null)}
@@ -121,7 +122,7 @@ function NodeShape({ node, health, active, onSelect, onHover }: { node: TopoNode
   const events = {
     onClick: (e: React.MouseEvent) => {
       e.stopPropagation();
-      onSelect(select);
+      onSelect(select, e);
     },
     onMouseMove: (e: React.MouseEvent) => onHover(select, e),
     onMouseLeave: () => onHover(null),
