@@ -101,8 +101,8 @@ export function WanPage() {
     <div className="wan">
       <div className="page-head">
         <div>
-          <div className="eyebrow">Layer 4</div>
-          <h1>Rede WAN</h1>
+          <div className="eyebrow">Internet</div>
+          <h1>Links de internet</h1>
         </div>
         <label className="site-picker">
           <span>Site</span>

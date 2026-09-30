@@ -3,7 +3,7 @@ import { Clock } from "./Clock";
 
 const LAYERS = [
   { to: "/explorer", label: "Explorer", ready: true },
-  { to: "/wan", label: "L4 · WAN", ready: true },
+  { to: "/wan", label: "Internet", ready: true },
   { to: "/topologia", label: "Topologia", ready: true },
   { to: "/wifi", label: "Wi-Fi", ready: false },
   { to: "/servidores", label: "Servidores", ready: true },

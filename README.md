@@ -30,7 +30,7 @@ Primeira fase: **inventário**. A interface é organizada por camadas. Prontas a
   log de eventos ao vivo, medidores e gráficos de 24 h (temperatura e umidade, tensão, potência e
   consumo; no CPD também corredor frio, CO₂ e PM2.5), câmeras do CPD e a elevação dos racks.
 
-**Layer 4 · Rede WAN**:
+**Internet** (`/wan`, antes Layer 4 · Rede WAN):
 
 - inventário dos links de cada site: operadora, circuito, tecnologia, banda, papel
   (principal/secundário/backup), IP fixo, máscara, gateway, mascaramento (NAT), equipamento e
@@ -158,7 +158,7 @@ backend/
 frontend/
   src/topology/         Topologia: camada 2 das plantas (desenho, status, documentação dos enlaces)
   src/explorer/         Explorer: mapa dos sites, salas técnicas, painel da sala e racks
-  src/wan/              tela Layer 4 · Rede WAN (topologia, painéis, simulação, formulário)
+  src/wan/              tela Internet (topologia, painéis, simulação, formulário)
   src/lan/              portas dos switches (cores, simulação e tooltip), usadas na Topologia
   src/servers/          tela Servidores (CPU, memória e armazenamento do cluster)
   src/pages/            cadastro de sites
