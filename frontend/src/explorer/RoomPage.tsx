@@ -202,7 +202,10 @@ export function RoomPage() {
           </div>
         </div>
         <div className="room-head-actions">
-          <span className="badge sim" title="Switches, APs e enlaces vêm da Topologia; sensores, energia, câmeras e eventos são simulados">
+          <span
+            className="badge sim"
+            title="Switches, APs e enlaces vêm da Topologia; sensores, energia, câmeras e eventos são simulados"
+          >
             Sensores simulados
           </span>
           <Link to={`/explorer?site=${site.site.id}`} className="btn">
@@ -211,63 +214,144 @@ export function RoomPage() {
         </div>
       </header>
 
-      <div className="room-top">
-        <section className="panel room-info">
-          <div className="room-clock mono">{now.toLocaleTimeString("pt-BR")}</div>
-          <div className="muted room-date">
-            {now.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
-          </div>
-          <dl className="room-facts">
-            <dt>Controlador</dt>
-            <dd className="mono">{ip}</dd>
-            <dt>MAC</dt>
-            <dd className="mono">{mac}</dd>
-            <dt>Acesso</dt>
-            <dd>{room.access}</dd>
-            <dt>Climatização</dt>
-            <dd>{room.cooling}</dd>
-            <dt>Nobreak</dt>
-            <dd className="mono">{Math.round(room.upsMinutes)} min de autonomia</dd>
-            <dt>Carga</dt>
-            <dd className="mono">
-              {dec(room.powerKw, 2)} / {dec(room.powerCapacityKw)} kW ({Math.round(load)}%)
-            </dd>
-          </dl>
-          {issues.length > 0 && (
-            <ul className="room-issues">
-              {issues.map((i) => (
-                <li key={i.text} className={i.level}>
-                  {i.text}
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+      <div className="room-layout">
+        <div className="room-main">
+          <div className="room-top">
+            <section className="panel room-info">
+              <div className="room-clock mono">{now.toLocaleTimeString("pt-BR")}</div>
+              <div className="muted room-date">
+                {now.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+              </div>
+              <dl className="room-facts">
+                <dt>Controlador</dt>
+                <dd className="mono">{ip}</dd>
+                <dt>MAC</dt>
+                <dd className="mono">{mac}</dd>
+                <dt>Acesso</dt>
+                <dd>{room.access}</dd>
+                <dt>Climatização</dt>
+                <dd>{room.cooling}</dd>
+                <dt>Nobreak</dt>
+                <dd className="mono">{Math.round(room.upsMinutes)} min de autonomia</dd>
+                <dt>Carga</dt>
+                <dd className="mono">
+                  {dec(room.powerKw, 2)} / {dec(room.powerCapacityKw)} kW ({Math.round(load)}%)
+                </dd>
+              </dl>
+              {issues.length > 0 && (
+                <ul className="room-issues">
+                  {issues.map((i) => (
+                    <li key={i.text} className={i.level}>
+                      {i.text}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
 
-        <section className="panel room-sensors">
-          <div className="room-section-title">
-            Sensores
-            <span className="muted">{activeSensors.length ? `${activeSensors.length} acionado(s)` : "nenhum acionado"}</span>
+            <section className="panel room-sensors">
+              <div className="room-section-title">
+                Sensores
+                <span className="muted">{activeSensors.length ? `${activeSensors.length} acionado(s)` : "nenhum acionado"}</span>
+              </div>
+              <div className="sensor-grid">
+                {telemetry.sensors.map((s) => {
+                  const alarm = s.active && (s.kind === "water" || s.kind === "smoke");
+                  return (
+                    <div key={s.id} className={`sensor-tile ${s.kind}${s.active ? " active" : ""}${alarm ? " alarm" : ""}`}>
+                      <span className="sensor-icon" aria-hidden>
+                        {SENSOR_ICON[s.kind]}
+                      </span>
+                      <span className="sensor-name">{s.label}</span>
+                      <span className="sensor-state mono">
+                        {s.active ? (s.kind === "door" ? "ABERTA" : s.kind === "presence" ? "MOVIMENTO" : "ALARME") : "normal"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="panel room-racks">
+              <div className="room-section-title">
+                {room.kind === "cpd" ? "Racks" : "Rack"}
+                <span className="muted">{room.kind === "cpd" ? `${room.racks.length} × 42U` : `${room.racks[0].heightU}U`}</span>
+              </div>
+              <div className="room-rack-row">
+                {room.racks.map((r) => (
+                  <RackElevation key={r.id} rack={r} />
+                ))}
+              </div>
+              <div className="ex-rack-legend muted">
+                {(Object.keys(UNIT_LABEL) as UnitKind[])
+                  .filter((k) => room.racks.some((r) => r.units.some((u) => u.kind === k)))
+                  .map((k) => (
+                    <span key={k}>
+                      <i className={`ex-rack-unit ${k}`} />
+                      {UNIT_LABEL[k]}
+                    </span>
+                  ))}
+              </div>
+            </section>
           </div>
-          <div className="sensor-grid">
-            {telemetry.sensors.map((s) => {
-              const alarm = s.active && (s.kind === "water" || s.kind === "smoke");
-              return (
-                <div key={s.id} className={`sensor-tile ${s.kind}${s.active ? " active" : ""}${alarm ? " alarm" : ""}`}>
-                  <span className="sensor-icon" aria-hidden>
-                    {SENSOR_ICON[s.kind]}
-                  </span>
-                  <span className="sensor-name">{s.label}</span>
-                  <span className="sensor-state mono">
-                    {s.active ? (s.kind === "door" ? "ABERTA" : s.kind === "presence" ? "MOVIMENTO" : "ALARME") : "normal"}
-                  </span>
+
+          {room.topology && <RoomNetwork room={room} />}
+
+          <div className="room-groups">
+            {groups(room).map((g) => (
+              <section key={g.title} className="room-group">
+                <div className="panel room-gauges">
+                  <div className="room-section-title">{g.title}</div>
+                  <div className="room-gauge-pair">
+                    {g.gauges.map((x) => {
+                      const spec = x.spec ?? METRICS[x.key];
+                      return <ArcGauge key={x.key} spec={spec} value={telemetry.values[x.key]} />;
+                    })}
+                  </div>
                 </div>
-              );
-            })}
+                {g.charts.map((c) => (
+                  <AreaChart
+                    key={c.key}
+                    title={c.title}
+                    icon={c.icon}
+                    spec={c.spec ?? METRICS[c.key]}
+                    values={live(telemetry, c.key)}
+                  />
+                ))}
+              </section>
+            ))}
           </div>
-        </section>
 
-        <section className="panel room-events">
+          {room.cameras > 0 && (
+            <section className="room-cameras">
+              <div className="room-section-title">
+                Câmeras CFTV
+                <span className="muted">imagens simuladas</span>
+              </div>
+              <div className="camera-grid">
+                {["Entrada", "Corredor dos racks"].slice(0, room.cameras).map((name, i) => (
+                  <div key={name} className={`camera cam-${i}`}>
+                    <div className="camera-scene" aria-hidden>
+                      {Array.from({ length: room.racks.length }, (_, k) => (
+                        <span key={k} className="camera-rack" />
+                      ))}
+                    </div>
+                    <span className="camera-rec mono">
+                      <span className="rec-dot" /> REC
+                    </span>
+                    <span className="camera-name mono">
+                      CAM-0{i + 1} · {name}
+                    </span>
+                    <span className="camera-time mono">
+                      {now.toLocaleDateString("pt-BR")} {now.toLocaleTimeString("pt-BR")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+        <aside className="panel room-events" aria-label="Eventos e notificações">
           <div className="room-section-title">
             Eventos e notificações
             <span className="live-tag">
@@ -284,84 +368,8 @@ export function RoomPage() {
               </li>
             ))}
           </ol>
-        </section>
+        </aside>
       </div>
-
-      {room.topology && <RoomNetwork room={room} />}
-
-      <div className="room-groups">
-        {groups(room).map((g) => (
-          <section key={g.title} className="room-group">
-            <div className="panel room-gauges">
-              <div className="room-section-title">{g.title}</div>
-              <div className="room-gauge-pair">
-                {g.gauges.map((x) => {
-                  const spec = x.spec ?? METRICS[x.key];
-                  return <ArcGauge key={x.key} spec={spec} value={telemetry.values[x.key]} />;
-                })}
-              </div>
-            </div>
-            {g.charts.map((c) => (
-              <AreaChart
-                key={c.key}
-                title={c.title}
-                icon={c.icon}
-                spec={c.spec ?? METRICS[c.key]}
-                values={live(telemetry, c.key)}
-              />
-            ))}
-          </section>
-        ))}
-      </div>
-
-      {room.cameras > 0 && (
-        <section className="room-cameras">
-          <div className="room-section-title">
-            Câmeras CFTV
-            <span className="muted">imagens simuladas</span>
-          </div>
-          <div className="camera-grid">
-            {["Entrada", "Corredor dos racks"].slice(0, room.cameras).map((name, i) => (
-              <div key={name} className={`camera cam-${i}`}>
-                <div className="camera-scene" aria-hidden>
-                  {Array.from({ length: room.racks.length }, (_, k) => (
-                    <span key={k} className="camera-rack" />
-                  ))}
-                </div>
-                <span className="camera-rec mono">
-                  <span className="rec-dot" /> REC
-                </span>
-                <span className="camera-name mono">
-                  CAM-0{i + 1} · {name}
-                </span>
-                <span className="camera-time mono">
-                  {now.toLocaleDateString("pt-BR")} {now.toLocaleTimeString("pt-BR")}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section className="room-racks">
-        <div className="room-section-title">
-          {room.kind === "cpd" ? "Racks" : "Rack"}
-          <span className="muted">{room.kind === "cpd" ? `${room.racks.length} racks de 42U` : `${room.racks[0].heightU}U`} · passe o mouse sobre um equipamento</span>
-        </div>
-        <div className="room-rack-row">
-          {room.racks.map((r) => (
-            <RackElevation key={r.id} rack={r} />
-          ))}
-        </div>
-        <div className="ex-rack-legend muted">
-          {(Object.keys(UNIT_LABEL) as UnitKind[]).map((k) => (
-            <span key={k}>
-              <i className={`ex-rack-unit ${k}`} />
-              {UNIT_LABEL[k]}
-            </span>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }
