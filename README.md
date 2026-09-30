@@ -39,6 +39,17 @@ Primeira fase: **inventário**. A interface é organizada por camadas. Prontas a
 - indicadores de saúde, filtro "somente com problemas", detalhes da porta e do switch ao clicar,
   alertas e log de eventos.
 
+**Topologia** (`/topologia`), a camada 2 de cada planta, adaptada dos desenhos oficiais do Visio
+(BR-MAT rev. 2 e BR-ACS rev. 2):
+
+- desenho com os ativos, as salas sem ativo (passagem de cabo) e todos os enlaces: fibra SM ou MM
+  com a quantidade de fibras, UTP, rádio, conectores (SFP Cisco, conversor, injetor PoE), anéis
+  ópticos, conexões interrompidas e observações em vermelho do desenho (baseline pendente, STP a
+  ser ativado);
+- um marcador de status em cada equipamento (online, degradado, offline), por enquanto simulado;
+- ao passar o mouse ou clicar, os detalhes do ativo e das portas; abaixo, a tabela com a
+  documentação de todos os enlaces da planta.
+
 **Servidores** (`/servidores`), com dados fictícios por enquanto, organizada em três colunas por
 cluster de virtualização:
 
@@ -139,6 +150,7 @@ backend/
   alembic/              migrações do banco
   tests/                testes da API
 frontend/
+  src/topology/         Topologia: camada 2 das plantas (desenho, status, documentação dos enlaces)
   src/explorer/         Explorer: mapa dos sites, salas técnicas, painel da sala e racks
   src/wan/              tela Layer 4 · Rede WAN (topologia, painéis, simulação, formulário)
   src/lan/              tela Layer 3 · Switches (grade de portas e dados fictícios)
