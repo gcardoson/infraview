@@ -966,14 +966,14 @@ td {
 
 .heat-cells {
   display: grid;
-  grid-template-columns: repeat(24, 1fr);
+  grid-template-columns: repeat(24, minmax(0, 1fr));
   gap: 2px;
 }
 
 .heat-cell {
   display: inline-block;
   height: 12px;
-  min-width: 6px;
+  min-width: 0;
   border-radius: 1px;
 }
 
@@ -1139,6 +1139,7 @@ fieldset .btn.small {
     grid-column: 1 / -1;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    align-items: start;
   }
 }
 
@@ -5109,4 +5110,18 @@ button.port-sq:hover,
 
 .topo-table-toggle .chevron {
   color: var(--text-2);
+}
+
+/* Internet: the right column holds the event log and alerts; the log fits its width and runs taller. */
+.wan-side .terminal-body {
+  height: 460px;
+}
+
+.wan-side .log-line {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.1rem 0.5rem;
+}
+
+.wan-side .log-msg {
+  grid-column: 1 / -1;
 }

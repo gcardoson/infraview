@@ -174,6 +174,55 @@ export function WanPage() {
             </button>
             {!sites.items.length && !sites.loading && <p className="muted empty">Cadastre um site primeiro, na aba Sites.</p>}
           </section>
+          <section className="panel">
+            <div className="panel-title">
+              Tráfego agregado <span className="muted">de {mbps(capacity)}</span>
+            </div>
+            <Sparkline values={aggregate} max={capacity} format={mbps} label="Tráfego agregado do site" />
+          </section>
+
+          <section className="panel">
+            <div className="panel-title">Latência por link</div>
+            <ul className="bars">
+              {siteLinks.map((link) => {
+                const t = telemetry.get(link.id);
+                const h = health(link);
+                const value = t && h !== "down" && h !== "standby" ? t.latencyMs : null;
+                return (
+                  <li key={link.id} title={`${link.provider}: ${value === null ? HEALTH_LABEL[h] : `${value.toFixed(0)} ms`}`}>
+                    <span className="bar-label">{link.provider}</span>
+                    <span className="bar-track">
+                      <span style={{ width: `${Math.min(100, ((value ?? 0) / 150) * 100)}%`, background: HEALTH_COLOR[h] }} />
+                    </span>
+                    <span className="bar-value mono">{value === null ? HEALTH_LABEL[h] : `${value.toFixed(0)} ms`}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+
+          <section className="panel">
+            <div className="panel-title">Disponibilidade 24h</div>
+            <div className="heatmap">
+              {siteLinks.map((link) => (
+                <div key={link.id} className="heat-row">
+                  <span className="heat-label">{link.provider}</span>
+                  <span className="heat-cells">
+                    {(telemetry.get(link.id)?.availability ?? []).map((v, i) => (
+                      <span
+                        key={i}
+                        className={`heat-cell ${v === 1 ? "ok" : v === 0 ? "crit" : "warn"}`}
+                        title={`${link.provider} · ${23 - i === 0 ? "hora atual" : `${23 - i}h atrás`}: ${v === 1 ? "ok" : v === 0 ? "fora" : "degradado"}`}
+                      />
+                    ))}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="heat-legend muted">
+              <span className="heat-cell ok" /> ok <span className="heat-cell warn" /> degradado <span className="heat-cell crit" /> fora
+            </div>
+          </section>
         </aside>
 
         <main className="col center">
@@ -256,37 +305,10 @@ export function WanPage() {
             </section>
           )}
 
-          <LogTerminal entries={log} />
         </main>
 
-        <aside className="col">
-          <section className="panel">
-            <div className="panel-title">
-              Tráfego agregado <span className="muted">de {mbps(capacity)}</span>
-            </div>
-            <Sparkline values={aggregate} max={capacity} format={mbps} label="Tráfego agregado do site" />
-          </section>
-
-          <section className="panel">
-            <div className="panel-title">Latência por link</div>
-            <ul className="bars">
-              {siteLinks.map((link) => {
-                const t = telemetry.get(link.id);
-                const h = health(link);
-                const value = t && h !== "down" && h !== "standby" ? t.latencyMs : null;
-                return (
-                  <li key={link.id} title={`${link.provider}: ${value === null ? HEALTH_LABEL[h] : `${value.toFixed(0)} ms`}`}>
-                    <span className="bar-label">{link.provider}</span>
-                    <span className="bar-track">
-                      <span style={{ width: `${Math.min(100, ((value ?? 0) / 150) * 100)}%`, background: HEALTH_COLOR[h] }} />
-                    </span>
-                    <span className="bar-value mono">{value === null ? HEALTH_LABEL[h] : `${value.toFixed(0)} ms`}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-
+        <aside className="col wan-side">
+          <LogTerminal entries={log} />
           <section className="panel">
             <div className="panel-title">Alertas recentes</div>
             {alerts.length ? (
@@ -308,28 +330,6 @@ export function WanPage() {
             )}
           </section>
 
-          <section className="panel">
-            <div className="panel-title">Disponibilidade 24h</div>
-            <div className="heatmap">
-              {siteLinks.map((link) => (
-                <div key={link.id} className="heat-row">
-                  <span className="heat-label">{link.provider}</span>
-                  <span className="heat-cells">
-                    {(telemetry.get(link.id)?.availability ?? []).map((v, i) => (
-                      <span
-                        key={i}
-                        className={`heat-cell ${v === 1 ? "ok" : v === 0 ? "crit" : "warn"}`}
-                        title={`${link.provider} · ${23 - i === 0 ? "hora atual" : `${23 - i}h atrás`}: ${v === 1 ? "ok" : v === 0 ? "fora" : "degradado"}`}
-                      />
-                    ))}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="heat-legend muted">
-              <span className="heat-cell ok" /> ok <span className="heat-cell warn" /> degradado <span className="heat-cell crit" /> fora
-            </div>
-          </section>
         </aside>
       </div>
 

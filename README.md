@@ -35,8 +35,8 @@ Primeira fase: **inventário**. A interface é organizada por camadas. Prontas a
 - inventário dos links de cada site: operadora, circuito, tecnologia, banda, papel
   (principal/secundário/backup), IP fixo, máscara, gateway, mascaramento (NAT), equipamento e
   porta SD-WAN e VLANs internas;
-- topologia animada (operadoras → SD-WAN → core/LAN), painéis de tráfego, latência, alertas e
-  disponibilidade, e um log de eventos.
+- topologia animada (operadoras → SD-WAN → core/LAN) ao centro; à esquerda os links, tráfego, latência e
+  disponibilidade 24h; à direita o log de eventos e os alertas recentes.
 
 **Topologia** (`/topologia`), a camada 2 de cada planta, adaptada dos desenhos oficiais do Visio
 (BR-MAT rev. 2 e BR-ACS rev. 2):
