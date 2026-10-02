@@ -1,5 +1,6 @@
 """Generic CRUD router shared by the inventory resources."""
 
+from collections.abc import Callable
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -31,6 +32,8 @@ def crud_router(
     read_schema: type[BaseModel],
     filters: tuple[str, ...] = (),
     order_by: str = "id",
+    build: Callable[[dict], Any] | None = None,
+    before_delete: Callable[[Session, Any], None] | None = None,
 ) -> APIRouter:
     router = APIRouter()
 
@@ -57,7 +60,8 @@ def crud_router(
 
     @router.post("", response_model=read_schema, status_code=status.HTTP_201_CREATED)
     def create_item(payload: create_schema, session: SessionDep) -> Any:  # type: ignore[valid-type]
-        item = model(**payload.model_dump(mode="json"))
+        data = payload.model_dump(mode="json")
+        item = build(data) if build else model(**data)
         session.add(item)
         _commit(session)
         session.refresh(item)
@@ -78,7 +82,10 @@ def crud_router(
 
     @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
     def delete_item(item_id: int, session: SessionDep) -> None:
-        session.delete(get_or_404(session, item_id))
+        item = get_or_404(session, item_id)
+        if before_delete:
+            before_delete(session, item)
+        session.delete(item)
         _commit(session)
 
     return router

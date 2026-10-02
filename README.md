@@ -7,7 +7,8 @@ access points, servidores e telefonia.
 
 Primeira fase: **inventário**. A interface é organizada por camadas. Prontas até agora:
 
-**Explorer** (`/explorer`, a tela inicial), montado a partir da Topologia, com sensores simulados por enquanto:
+**Explorer** (`/explorer`, a tela inicial), com os CPDs e racks cadastrados no banco (ligados aos
+switches da Topologia) e sensores simulados por enquanto:
 
 - mapa escuro (Leaflet) com um marcador por site. O mapa base vem de serviços públicos e
   gratuitos, sem chave de API (Esri e OpenStreetMap; a CARTO passou a exigir chave), tentados em
@@ -30,24 +31,20 @@ Primeira fase: **inventário**. A interface é organizada por camadas. Prontas a
   log de eventos ao vivo, medidores e gráficos de 24 h (temperatura e umidade, tensão, potência e
   consumo; no CPD também corredor frio, CO₂ e PM2.5), câmeras do CPD e a elevação dos racks.
 
-**Layer 4 · Rede WAN**:
+**Internet** (`/wan`, antes Layer 4 · Rede WAN):
 
 - inventário dos links de cada site: operadora, circuito, tecnologia, banda, papel
   (principal/secundário/backup), IP fixo, máscara, gateway, mascaramento (NAT), equipamento e
   porta SD-WAN e VLANs internas;
-- topologia animada (operadoras → SD-WAN → core/LAN), painéis de tráfego, latência, alertas e
-  disponibilidade, e um log de eventos.
-
-**Layer 3 · Switches** (`/lan`), com dados fictícios por enquanto:
-
-- switches agrupados por site (grupos recolhíveis), um quadrado por porta, no formato do painel
-  do switch: ímpares em cima e pares embaixo (01/02 … 23/24); switches de 48 portas mostram dois
-  blocos de 24 lado a lado; só as duas primeiras e as duas últimas portas de cada bloco levam
-  etiqueta; os uplinks ficam nas colunas U1–U4;
-- cores: verde conectada, amarela em alerta ou 100 Mbps, vermelha desconectada, com erro ou
-  10 Mbps, cinza desabilitada;
-- indicadores de saúde, filtro "somente com problemas", detalhes da porta e do switch ao clicar,
-  alertas e log de eventos.
+- topologia animada (operadoras → SD-WAN → core/LAN) ao centro; à esquerda os links, tráfego, latência e
+  disponibilidade 24h; à direita o log de eventos e os alertas recentes;
+- links Starlink aparecem como a antena (prato inclinado sobre o tripé) em vez da placa das demais
+  operadoras;
+- o SD-WAN Edge é o par VMware VeloCloud Edge 620 em alta disponibilidade, desenhado como dois
+  equipamentos empilhados com a unidade ativa marcada. O status do HA (sincronizado,
+  ressincronizando, sem sincronismo) aparece no desenho e no painel de indicadores; perda de
+  sincronismo, failover e retorno entram no log e nos alertas com a tag `HA` (simulado até a
+  integração com o VeloCloud Orchestrator).
 
 **Topologia** (`/topologia`), a camada 2 de cada planta, adaptada dos desenhos oficiais do Visio
 (BR-MAT rev. 2 e BR-ACS rev. 2):
@@ -57,11 +54,18 @@ Primeira fase: **inventário**. A interface é organizada por camadas. Prontas a
   ópticos, conexões interrompidas e observações em vermelho do desenho (baseline pendente, STP a
   ser ativado);
 - um marcador de status em cada equipamento (online, degradado, offline), por enquanto simulado;
-- ao passar o mouse ou clicar, os detalhes do ativo e das portas; abaixo, a tabela com a
-  documentação de todos os enlaces da planta.
+- ao passar o mouse ou clicar, os detalhes do ativo e das portas; abaixo, a tabela recolhível com
+  a documentação de todos os enlaces da planta;
+- no fim da página, os **switches** da planta porta a porta (a antiga tela L3 · Switches, `/lan`
+  agora leva para cá): um quadrado por porta no formato do painel do switch (ímpares em cima,
+  pares embaixo, blocos de 24, uplinks à direita), pilhas em uma linha por membro, cores verde
+  conectada, amarela em alerta ou 100 Mbps (exceto portas FastEthernet), vermelha desconectada,
+  com erro ou 10 Mbps, cinza desabilitada. As portas dos enlaces do desenho têm contorno azul e
+  descrevem o vizinho, o meio e as fibras; as demais são simuladas. Clicar em um switch no desenho
+  mostra só ele; clicar num enlace mostra os switches das duas pontas; Ctrl+clique soma switches.
 
-**Servidores** (`/servidores`), com dados fictícios por enquanto, organizada em três colunas por
-cluster de virtualização:
+**Servidores** (`/servidores`), com o cluster de cada planta cadastrado no banco (hosts,
+datastores e storage) e uso simulado, organizada em três colunas:
 
 - CPU: capacidade total do cluster (GHz, sockets, cores, threads, relação vCPU:pCPU) e, por host,
   fabricante, modelo do processador, clock base e turbo, cores, threads, cache e uso recente;
@@ -69,6 +73,27 @@ cluster de virtualização:
   velocidade, módulos e o mapa de slots, destacando os slots livres;
 - armazenamento: capacidade, uso, provisionamento e overcommit, divisão por tipo (VMFS, NFS,
   vSAN), baias do storage e a lista de datastores compartilhados e locais.
+
+**VLANs** (`/vlans`, ao lado de Sites), cadastro real das VLANs de cada planta: número (1–4094,
+único por site), nome, sub-rede, gateway, DHCP, status e observações. A migração 0004 já preenche o
+cadastro com as VLANs listadas nos links de internet.
+
+**Adicionar e editar.** Ao lado da etiqueta de dados simulados de cada página há dois botões: **+**
+para adicionar e o **lápis** para editar o que está na tela:
+
+- Explorer: novo site (exige ao menos um CPD ou rack), novo CPD ou rack no site selecionado e
+  edição do site; na página do CPD ou rack, novo CPD ou rack e edição da sala (switch, racks e
+  alturas, câmeras, climatização, acesso, coordenadas). O último CPD ou rack de um site não pode
+  ser removido;
+- Topologia: nova topologia para um site que ainda não tem e edição da atual
+  (`/topologia/editar?site=<código>`), com tabelas de ativos e enlaces e arrastar no desenho;
+- Servidores: novo cluster para um site sem cluster e edição do atual (hosts a partir de modelos,
+  CPU e memória por socket, datastores e storage);
+- Internet: novo link no site e edição do link selecionado.
+
+CPDs e racks, topologias e clusters ficam nas tabelas `rooms`, `topologies` e `clusters` (uma
+topologia e um cluster por site). A migração 0005 carrega os desenhos de BR-MAT e Arcos e os
+clusters de antes para os sites existentes; sites sem desenho ganham um CPD padrão com um rack de 42U.
 
 Status, tráfego, alertas e log ainda são **simulados** no navegador, só para visualizar a tela em
 funcionamento. Os campos `librenms_device_id` e `prtg_object_id` já existem para a próxima fase,
@@ -155,15 +180,15 @@ npm run dev
 backend/
   app/models.py         modelos: Site, Device, InternetLink
   app/schemas.py        validação de entrada e saída (Pydantic)
-  app/routers/          rotas CRUD em /api/sites, /api/devices, /api/links
+  app/routers/          rotas CRUD em /api/sites, /api/devices, /api/links, /api/vlans
   app/seed.py           dados de exemplo (inclui coordenadas dos sites de exemplo)
   alembic/              migrações do banco
   tests/                testes da API
 frontend/
   src/topology/         Topologia: camada 2 das plantas (desenho, status, documentação dos enlaces)
   src/explorer/         Explorer: mapa dos sites, salas técnicas, painel da sala e racks
-  src/wan/              tela Layer 4 · Rede WAN (topologia, painéis, simulação, formulário)
-  src/lan/              tela Layer 3 · Switches (grade de portas e dados fictícios)
+  src/wan/              tela Internet (topologia, painéis, simulação, formulário)
+  src/lan/              portas dos switches (cores, simulação e tooltip), usadas na Topologia
   src/servers/          tela Servidores (CPU, memória e armazenamento do cluster)
   src/pages/            cadastro de sites
   src/components/       layout, relógio, modal

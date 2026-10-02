@@ -314,17 +314,6 @@ h1 {
 
 /* ---------- WAN layout ---------- */
 
-.site-picker {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
 select,
 input,
 textarea {
@@ -341,13 +330,6 @@ input:focus,
 textarea:focus {
   outline: none;
   border-color: var(--ok-dim);
-}
-
-.site-picker select {
-  min-width: 240px;
-  text-transform: none;
-  letter-spacing: 0;
-  font-family: var(--sans);
 }
 
 .wan-grid {
@@ -966,14 +948,14 @@ td {
 
 .heat-cells {
   display: grid;
-  grid-template-columns: repeat(24, 1fr);
+  grid-template-columns: repeat(24, minmax(0, 1fr));
   gap: 2px;
 }
 
 .heat-cell {
   display: inline-block;
   height: 12px;
-  min-width: 6px;
+  min-width: 0;
   border-radius: 1px;
 }
 
@@ -1139,6 +1121,7 @@ fieldset .btn.small {
     grid-column: 1 / -1;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    align-items: start;
   }
 }
 
@@ -2944,8 +2927,14 @@ button.port-sq:hover,
 
 .ex-edit {
   margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-decoration: underline;
   color: var(--text-2);
   letter-spacing: 0.08em;
+  cursor: pointer;
 }
 
 .ex-site-card {
@@ -3896,15 +3885,21 @@ button.port-sq:hover,
   gap: 0.8rem;
 }
 
-.topo-tabs {
+.plant-tabs {
   display: flex;
+  flex-wrap: wrap;
   padding: 3px;
   border: 1px solid var(--line-2);
   border-radius: 6px;
   background: var(--panel);
 }
 
-.topo-tabs button {
+/* Same spacing to the badge as on Topologia. */
+.page-head > .plant-tabs {
+  margin-right: -0.7rem;
+}
+
+.plant-tabs button {
   padding: 0.35rem 0.9rem;
   border: 0;
   border-radius: 4px;
@@ -3916,11 +3911,11 @@ button.port-sq:hover,
   cursor: pointer;
 }
 
-.topo-tabs button:hover {
+.plant-tabs button:hover {
   color: var(--text);
 }
 
-.topo-tabs button.active {
+.plant-tabs button.active {
   background: rgba(46, 230, 160, 0.12);
   color: var(--ok);
 }
@@ -5000,4 +4995,507 @@ button.port-sq:hover,
     transform: none;
     white-space: normal;
   }
+}
+
+/* Topologia: the plant's switches, port by port, under the drawing (formerly L3 · Switches). */
+.topo-switches {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.topo-switches .lan-grid {
+  margin-bottom: 0;
+}
+
+.topo-switches-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1.2rem;
+}
+
+.topo-switches-head .room-section-title {
+  margin: 0;
+}
+
+.topo-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.topo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.25rem 0.15rem 0.5rem;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 0.72rem;
+}
+
+.topo-chip button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--text);
+  cursor: pointer;
+  font-size: inherit;
+}
+
+.topo-chip .topo-chip-x {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: var(--text-2);
+}
+
+.topo-chip .topo-chip-x:hover {
+  background: var(--line-2);
+  color: var(--text);
+}
+
+.topo-switch-kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.8rem;
+  margin-left: auto;
+  font-size: 0.74rem;
+}
+
+.topo-switch-kpis .ok {
+  color: var(--ok);
+}
+
+.topo-switch-kpis .warn {
+  color: var(--warn);
+}
+
+.topo-switch-kpis .crit {
+  color: var(--crit);
+}
+
+/* Ports that carry a link from the drawing get a blue ring. */
+.port-sq.documented {
+  box-shadow: 0 0 0 1.5px #4f8dff;
+}
+
+.switch-row.offline .col-port {
+  opacity: 0.45;
+}
+
+.switch-name .topo-dot {
+  flex: none;
+}
+
+.topo-table-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.topo-table-toggle .chevron {
+  color: var(--text-2);
+}
+
+/* Internet: the right column holds the event log and alerts; the log fits its width and runs taller. */
+.wan-side .terminal-body {
+  height: 460px;
+}
+
+.wan-side .log-line {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.1rem 0.5rem;
+}
+
+.wan-side .log-msg {
+  grid-column: 1 / -1;
+}
+
+/* SD-WAN edge HA pair */
+.edge-unit-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  fill: var(--muted);
+  text-anchor: end;
+}
+
+.edge-unit:not(.on) .edge-core {
+  fill: var(--idle);
+}
+
+.edge-unit:not(.on) .edge-inner {
+  stroke-opacity: 0.45;
+}
+
+.ha-heartbeat {
+  stroke: var(--ok);
+  stroke-width: 2;
+  stroke-dasharray: 3 3;
+  animation: ha-beat 1.2s linear infinite;
+}
+
+.ha-status circle {
+  fill: var(--ok);
+}
+
+.ha-status text {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  fill: var(--ok);
+}
+
+.ha-syncing .ha-heartbeat,
+.ha-syncing .ha-status circle {
+  stroke: var(--warn);
+}
+
+.ha-syncing .ha-status circle {
+  fill: var(--warn);
+  animation: blink 1s ease-in-out infinite;
+}
+
+.ha-syncing .ha-status text {
+  fill: var(--warn);
+}
+
+.ha-lost .ha-heartbeat {
+  stroke: var(--crit);
+  stroke-dasharray: 2 5;
+  animation: none;
+}
+
+.ha-lost .ha-status circle {
+  fill: var(--crit);
+  animation: blink 0.8s ease-in-out infinite;
+}
+
+.ha-lost .ha-status text {
+  fill: var(--crit);
+}
+
+.edge-unit.unit-lost .plate-top {
+  stroke: var(--crit);
+  stroke-width: 1.5;
+}
+
+.edge-unit.unit-lost .edge-inner {
+  stroke: var(--crit);
+  stroke-opacity: 0.8;
+}
+
+.edge-unit.unit-lost .edge-core {
+  fill: var(--crit);
+}
+
+.ha-mark {
+  fill: var(--crit);
+  font-size: 18px;
+  text-anchor: middle;
+  animation: blink 0.8s ease-in-out infinite;
+}
+
+@keyframes ha-beat {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+.kpi-ha {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--line);
+  padding-top: 0.5rem;
+}
+
+.kpi-ha-value {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--ok);
+}
+
+.kpi-ha-value i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.kpi-ha.ha-syncing .kpi-ha-value {
+  color: var(--warn);
+}
+
+.kpi-ha.ha-lost .kpi-ha-value {
+  color: var(--crit);
+}
+
+.kpi-ha.ha-lost .kpi-ha-value i {
+  animation: blink 0.8s ease-in-out infinite;
+}
+
+/* Starlink dish on the Internet topology */
+.dish-base line {
+  stroke: #33413f;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+.dish-base circle {
+  fill: #33413f;
+}
+
+.dish .plate-top,
+.dish .plate-side {
+  stroke-linejoin: round;
+}
+
+.dish-inner {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.06);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.dish.active .plate-top {
+  stroke: var(--ok-dim);
+}
+
+.dish.active .dish-base line {
+  stroke: #3b4b48;
+}
+
+/* Add / edit buttons of leaf pages */
+.edit-actions {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.icon-action {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.icon-action:hover:not(:disabled) {
+  border-color: var(--ok-dim);
+  color: var(--ok);
+}
+
+.icon-action:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* A repeated row inside a form (racks, rooms, hosts…); columns come from the style attribute. */
+.row-edit {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.row-edit-head {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+fieldset .hint {
+  grid-column: 1 / -1;
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin: -0.2rem 0 0;
+}
+
+.modal-foot .btn.danger {
+  margin-right: auto;
+}
+
+/* Topology editor */
+.topo-editor-head {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.topo-editor-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 1rem;
+  align-items: start;
+}
+
+.topo-editor-canvas {
+  padding: 0.8rem;
+}
+
+.topo-svg.editing .topo-node {
+  cursor: grab;
+}
+
+.topo-svg.editing .topo-node:active {
+  cursor: grabbing;
+}
+
+.topo-editor-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.8rem;
+  position: sticky;
+  top: 76px;
+  max-height: calc(100vh - 92px);
+  overflow: auto;
+}
+
+.topo-editor-tabs {
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+}
+
+.topo-editor-tabs button {
+  flex: 1;
+  padding: 0.35rem;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.topo-editor-tabs button.active {
+  background: rgba(46, 230, 160, 0.12);
+  color: var(--ok);
+}
+
+.topo-editor-add,
+.topo-editor-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  grid-column: 1 / -1;
+}
+
+.topo-editor-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.topo-editor-list button {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.35rem 0.6rem;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font-size: 0.74rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.topo-editor-list button:hover,
+.topo-editor-list button.active {
+  background: rgba(46, 230, 160, 0.08);
+}
+
+.topo-editor-list button.active {
+  color: var(--ok);
+}
+
+.topo-editor-form .span {
+  grid-column: 1 / -1;
+}
+
+.topo-editor-end {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 0.5rem;
+}
+
+@media (max-width: 1100px) {
+  .topo-editor-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .topo-editor-head {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .topo-editor-side {
+    position: static;
+    max-height: none;
+  }
+}
+
+.modal.wide {
+  width: min(1080px, 100%);
+}
+
+/* Cluster form */
+.cluster-general,
+.cluster-array {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.host-edit {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.host-detail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.6rem;
+  padding: 0.7rem;
+  border: 1px dashed var(--line-2);
+  border-radius: 6px;
+}
+
+.host-detail label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--text-2);
+}
+
+.row-edit input[type="checkbox"] {
+  justify-self: center;
+}
+
+.row-edit .hint {
+  margin: 0;
 }

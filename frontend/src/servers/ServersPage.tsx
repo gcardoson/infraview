@@ -1,13 +1,14 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { api } from "../api";
-import { useResource } from "../components/useResource";
+import { EditActions } from "../components/EditActions";
+import { PlantTabs } from "../components/PlantTabs";
+import { useInventory } from "../inventory";
+import { ClusterForm } from "./ClusterForm";
 import {
   type Cluster,
   type Datastore,
   type DatastoreType,
   type Host,
-  buildClusters,
   clusterTotals,
   cores,
   emptySlots,
@@ -17,6 +18,7 @@ import {
   installedGb,
   maxGb,
   threads,
+  toCluster,
   useClusterSimulation,
 } from "./data";
 
@@ -385,13 +387,24 @@ interface ColumnProps {
 
 export function ServersPage() {
   const [params, setParams] = useSearchParams();
-  const sites = useResource(useCallback(() => api.sites.list(), []));
-  const clusters = useMemo(() => buildClusters(sites.items), [sites.items]);
+  const inventory = useInventory();
+  const clusters = useMemo(
+    () =>
+      inventory.clusters
+        .flatMap((record) => {
+          const site = inventory.sites.find((s) => s.id === record.site_id);
+          return site ? [toCluster(record, site)] : [];
+        })
+        .sort((a, b) => a.siteCode.localeCompare(b.siteCode)),
+    [inventory.clusters, inventory.sites],
+  );
   const clusterId = params.get("cluster") ?? clusters[0]?.id;
-  const base = sites.loading ? null : (clusters.find((c) => c.id === clusterId) ?? clusters[0] ?? null);
+  const base = inventory.loading ? null : (clusters.find((c) => c.id === clusterId) ?? clusters[0] ?? null);
   const cluster = useClusterSimulation(base);
   const [selected, setSelected] = useState<string | null>(null);
   const toggle = (id: string) => setSelected((current) => (current === id ? null : id));
+  const [editing, setEditing] = useState<"cluster" | "new" | null>(null);
+  const freeSites = inventory.sites.filter((s) => !inventory.clusters.some((c) => c.site_id === s.id));
 
   const t = cluster ? clusterTotals(cluster) : null;
   const rebuilding = cluster?.array.bays.some((b) => b.state === "rebuild");
@@ -403,28 +416,39 @@ export function ServersPage() {
           <div className="eyebrow">Servidores</div>
           <h1>Cluster de virtualização</h1>
         </div>
-        <label className="site-picker">
-          <span>Cluster</span>
-          <select
-            value={cluster?.id ?? ""}
-            onChange={(e) => {
-              setSelected(null);
-              setParams({ cluster: e.target.value });
-            }}
-          >
-            {clusters.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} · {c.siteName}
-              </option>
-            ))}
-          </select>
-        </label>
+        <PlantTabs
+          plants={clusters.map((c) => ({ key: c.id, code: c.siteCode, name: `${c.siteName} · ${c.name}` }))}
+          value={base?.id ?? null}
+          onChange={(id) => {
+            setSelected(null);
+            setParams({ cluster: id });
+          }}
+        />
         <span className="badge sim" title="Hosts, memória e datastores são fictícios até a integração com vCenter, LibreNMS e PRTG">
           Dados fictícios
         </span>
+        <EditActions
+          addLabel={freeSites.length ? "Novo cluster para um site" : "Todos os sites já têm cluster"}
+          onAdd={freeSites.length ? () => setEditing("new") : undefined}
+          editLabel={base ? `Editar o cluster ${base.name}` : "Nenhum cluster para editar"}
+          onEdit={base ? () => setEditing("cluster") : undefined}
+        />
       </div>
+      {editing && (
+        <ClusterForm
+          cluster={editing === "cluster" ? (base?.record ?? null) : null}
+          sites={editing === "cluster" ? inventory.sites : freeSites}
+          onClose={() => setEditing(null)}
+          onSaved={(saved) => {
+            setEditing(null);
+            inventory.reload();
+            setParams({ cluster: String(saved.id) });
+          }}
+        />
+      )}
 
-      {sites.error && <div className="banner error">Erro ao carregar sites: {sites.error}</div>}
+      {inventory.error && <div className="banner error">Erro ao carregar dados: {inventory.error}</div>}
+      {!cluster && !inventory.loading && <p className="muted">Nenhum cluster cadastrado.</p>}
 
       {cluster && t && (
         <>
@@ -456,7 +480,7 @@ export function ServersPage() {
             <div className={`panel kpi${rebuilding ? " attention" : ""}`}>
               <span className="kpi-label">HA · DRS</span>
               <span className={`srv-strip-text ${rebuilding ? "warn" : "ok"}`}>
-                {rebuilding ? "Disco em rebuild" : `HA ativo · DRS ${cluster.drs.toLowerCase()}`}
+                {rebuilding ? "Disco em rebuild" : `HA ${cluster.haEnabled ? "ativo" : "desativado"} · DRS ${cluster.drs.toLowerCase()}`}
               </span>
             </div>
           </section>

@@ -16,6 +16,10 @@ app.add_middleware(
 app.include_router(inventory.sites, prefix="/api/sites", tags=["sites"])
 app.include_router(inventory.devices, prefix="/api/devices", tags=["devices"])
 app.include_router(inventory.links, prefix="/api/links", tags=["links"])
+app.include_router(inventory.vlans, prefix="/api/vlans", tags=["vlans"])
+app.include_router(inventory.rooms, prefix="/api/rooms", tags=["rooms"])
+app.include_router(inventory.topologies, prefix="/api/topologies", tags=["topologies"])
+app.include_router(inventory.clusters, prefix="/api/clusters", tags=["clusters"])
 
 
 @app.get("/api/health", tags=["health"])
