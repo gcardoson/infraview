@@ -5458,3 +5458,44 @@ fieldset .hint {
     max-height: none;
   }
 }
+
+.modal.wide {
+  width: min(1080px, 100%);
+}
+
+/* Cluster form */
+.cluster-general,
+.cluster-array {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.host-edit {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.host-detail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.6rem;
+  padding: 0.7rem;
+  border: 1px dashed var(--line-2);
+  border-radius: 6px;
+}
+
+.host-detail label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--text-2);
+}
+
+.row-edit input[type="checkbox"] {
+  justify-self: center;
+}
+
+.row-edit .hint {
+  margin: 0;
+}

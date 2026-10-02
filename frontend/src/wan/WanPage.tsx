@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { type InternetLink, ROLE_LABEL, api } from "../api";
 import { useResource } from "../components/useResource";
+import { EditActions } from "../components/EditActions";
 import { PlantTabs } from "../components/PlantTabs";
 import { LinkForm } from "./LinkForm";
 import { HA_LABEL, type LinkHealth, type LogEntry, useWanSimulation } from "./simulation";
@@ -114,6 +115,12 @@ export function WanPage() {
         <span className="badge sim" title="Status, tráfego e log são fictícios até a integração com LibreNMS e PRTG">
           Telemetria simulada
         </span>
+        <EditActions
+          addLabel={site ? `Novo link em ${site.code}` : "Novo link"}
+          onAdd={sites.items.length ? () => setEditing("new") : undefined}
+          editLabel={selected ? `Editar o link ${selected.provider}` : "Selecione um link na topologia para editar"}
+          onEdit={selected ? () => setEditing(selected) : undefined}
+        />
       </div>
 
       {(sites.error || links.error) && <div className="banner error">Erro ao carregar dados: {sites.error ?? links.error}</div>}

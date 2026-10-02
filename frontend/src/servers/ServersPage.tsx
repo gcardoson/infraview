@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { EditActions } from "../components/EditActions";
 import { PlantTabs } from "../components/PlantTabs";
 import { useInventory } from "../inventory";
+import { ClusterForm } from "./ClusterForm";
 import {
   type Cluster,
   type Datastore,
@@ -401,6 +403,8 @@ export function ServersPage() {
   const cluster = useClusterSimulation(base);
   const [selected, setSelected] = useState<string | null>(null);
   const toggle = (id: string) => setSelected((current) => (current === id ? null : id));
+  const [editing, setEditing] = useState<"cluster" | "new" | null>(null);
+  const freeSites = inventory.sites.filter((s) => !inventory.clusters.some((c) => c.site_id === s.id));
 
   const t = cluster ? clusterTotals(cluster) : null;
   const rebuilding = cluster?.array.bays.some((b) => b.state === "rebuild");
@@ -423,7 +427,25 @@ export function ServersPage() {
         <span className="badge sim" title="Hosts, memória e datastores são fictícios até a integração com vCenter, LibreNMS e PRTG">
           Dados fictícios
         </span>
+        <EditActions
+          addLabel={freeSites.length ? "Novo cluster para um site" : "Todos os sites já têm cluster"}
+          onAdd={freeSites.length ? () => setEditing("new") : undefined}
+          editLabel={base ? `Editar o cluster ${base.name}` : "Nenhum cluster para editar"}
+          onEdit={base ? () => setEditing("cluster") : undefined}
+        />
       </div>
+      {editing && (
+        <ClusterForm
+          cluster={editing === "cluster" ? (base?.record ?? null) : null}
+          sites={editing === "cluster" ? inventory.sites : freeSites}
+          onClose={() => setEditing(null)}
+          onSaved={(saved) => {
+            setEditing(null);
+            inventory.reload();
+            setParams({ cluster: String(saved.id) });
+          }}
+        />
+      )}
 
       {inventory.error && <div className="banner error">Erro ao carregar dados: {inventory.error}</div>}
       {!cluster && !inventory.loading && <p className="muted">Nenhum cluster cadastrado.</p>}
@@ -458,7 +480,7 @@ export function ServersPage() {
             <div className={`panel kpi${rebuilding ? " attention" : ""}`}>
               <span className="kpi-label">HA · DRS</span>
               <span className={`srv-strip-text ${rebuilding ? "warn" : "ok"}`}>
-                {rebuilding ? "Disco em rebuild" : `HA ativo · DRS ${cluster.drs.toLowerCase()}`}
+                {rebuilding ? "Disco em rebuild" : `HA ${cluster.haEnabled ? "ativo" : "desativado"} · DRS ${cluster.drs.toLowerCase()}`}
               </span>
             </div>
           </section>
