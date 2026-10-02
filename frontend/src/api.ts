@@ -1,3 +1,6 @@
+import type { Cluster } from "./servers/data";
+import type { SiteTopology } from "./topology/data";
+
 export type LifecycleStatus = "active" | "spare" | "maintenance" | "decommissioned";
 export type LinkRole = "primary" | "secondary" | "backup";
 
@@ -51,7 +54,69 @@ export interface SiteVlan {
   notes: string | null;
 }
 
+export type RoomKind = "cpd" | "rack";
+
+export interface RackSpec {
+  name: string;
+  heightU: number;
+}
+
+/* A CPD or access rack as stored; sensors, power draw and rack contents are derived or simulated. */
+export interface RoomRecord {
+  id: number;
+  site_id: number;
+  kind: RoomKind;
+  code: string;
+  name: string;
+  building: string | null;
+  node_id: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  cameras: number;
+  cooling: string | null;
+  access: string | null;
+  power_capacity_kw: number | null;
+  racks: RackSpec[];
+  notes: string | null;
+}
+
+/* The drawing of SiteTopology without the fields that come from the site and the record. */
+export type TopologyDocument = Pick<SiteTopology, "view" | "textScale" | "nodes" | "links" | "annotations" | "groups">;
+
+export interface TopologyRecord {
+  id: number;
+  site_id: number;
+  name: string;
+  city: string | null;
+  revision: string | null;
+  date: string | null;
+  author: string | null;
+  document: TopologyDocument;
+}
+
+/* Hosts, datastores and array as stored: the cluster without its simulated usage. */
+export interface ClusterDocument {
+  hosts: Omit<Cluster["hosts"][number], "id" | "cpuUsage" | "memUsage" | "cpuHistory">[];
+  datastores: Omit<Cluster["datastores"][number], "id" | "usedTb" | "provisionedTb" | "hosts">[];
+  array: Cluster["array"] | null;
+  vcpus?: number;
+}
+
+export interface ClusterRecord {
+  id: number;
+  site_id: number;
+  name: string;
+  vcenter: string | null;
+  ha_enabled: boolean;
+  drs: string | null;
+  document: ClusterDocument;
+}
+
 export type SitePayload = Omit<Site, "id">;
+export type SiteCreatePayload = SitePayload & { rooms: Omit<RoomPayload, "site_id">[] };
+export type RoomPayload = Omit<RoomRecord, "id">;
+export type TopologyPayload = Omit<TopologyRecord, "id">;
+export type ClusterPayload = Omit<ClusterRecord, "id">;
 export type VlanPayload = Omit<SiteVlan, "id">;
 export type LinkPayload = Omit<InternetLink, "id">;
 
@@ -96,7 +161,13 @@ function crud<T, P>(resource: string) {
 }
 
 export const api = {
-  sites: crud<Site, SitePayload>("sites"),
+  sites: {
+    ...crud<Site, SitePayload>("sites"),
+    create: (payload: SiteCreatePayload) => request<Site>("/sites", { method: "POST", body: JSON.stringify(payload) }),
+  },
+  rooms: crud<RoomRecord, RoomPayload>("rooms"),
+  topologies: crud<TopologyRecord, TopologyPayload>("topologies"),
+  clusters: crud<ClusterRecord, ClusterPayload>("clusters"),
   links: crud<InternetLink, LinkPayload>("links"),
   vlans: crud<SiteVlan, VlanPayload>("vlans"),
 };

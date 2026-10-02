@@ -2927,8 +2927,14 @@ button.port-sq:hover,
 
 .ex-edit {
   margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-decoration: underline;
   color: var(--text-2);
   letter-spacing: 0.08em;
+  cursor: pointer;
 }
 
 .ex-site-card {
@@ -5267,4 +5273,60 @@ button.port-sq:hover,
 
 .dish.active .dish-base line {
   stroke: #3b4b48;
+}
+
+/* Add / edit buttons of leaf pages */
+.edit-actions {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.icon-action {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.icon-action:hover:not(:disabled) {
+  border-color: var(--ok-dim);
+  color: var(--ok);
+}
+
+.icon-action:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* A repeated row inside a form (racks, rooms, hosts…); columns come from the style attribute. */
+.row-edit {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.row-edit-head {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+fieldset .hint {
+  grid-column: 1 / -1;
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin: -0.2rem 0 0;
+}
+
+.modal-foot .btn.danger {
+  margin-right: auto;
 }

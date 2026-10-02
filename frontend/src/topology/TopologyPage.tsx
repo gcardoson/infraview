@@ -1,11 +1,12 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { MEDIUM_LABEL, MEDIUM_SHORT, type SiteTopology, TOPOLOGIES, type TopoLink, type TopoNode, nodeLabel } from "./data";
+import { MEDIUM_LABEL, MEDIUM_SHORT, type SiteTopology, type TopoLink, type TopoNode, nodeLabel } from "./data";
 import { Diagram, type Selection } from "./Diagram";
 import { isSwitchNode } from "./switches";
 import { SwitchView } from "./SwitchView";
 import { LINK_LABEL, type LinkState, type NodeHealth, STATUS_LABEL, hasDevice, linkState, useTopologyStatus } from "./status";
 import { PlantTabs } from "../components/PlantTabs";
+import { useInventory } from "../inventory";
 
 const ZOOMS = [1, 1.25, 1.5, 2];
 const ago = (d: Date) => {
@@ -57,8 +58,22 @@ function useFollow() {
 }
 
 export function TopologyPage() {
+  const [params] = useSearchParams();
+  const inventory = useInventory();
+  const topologies = inventory.topologies;
+  const topology = topologies.find((t) => t.code === params.get("site")) ?? topologies[0];
+  if (!topology)
+    return (
+      <div className="topo-page">
+        {inventory.error && <div className="banner error">Erro ao carregar dados: {inventory.error}</div>}
+        <p className="muted">{inventory.loading ? "Carregando…" : "Nenhuma topologia cadastrada."}</p>
+      </div>
+    );
+  return <TopologyView key={topology.code} topology={topology} topologies={topologies} />;
+}
+
+function TopologyView({ topology, topologies }: { topology: SiteTopology; topologies: SiteTopology[] }) {
   const [params, setParams] = useSearchParams();
-  const topology = TOPOLOGIES.find((t) => t.code === params.get("site")) ?? TOPOLOGIES[0];
   const health = useTopologyStatus(topology);
   // The Explorer links straight to a device with ?node=.
   const [selected, setSelected] = useState<Selection>(() => {
@@ -139,7 +154,7 @@ export function TopologyPage() {
         </div>
         <div className="topo-head-right">
           <PlantTabs
-            plants={TOPOLOGIES.map((t) => ({ key: t.code, code: t.code, name: t.name }))}
+            plants={topologies.map((t) => ({ key: t.code, code: t.code, name: t.name }))}
             value={topology.code}
             onChange={switchSite}
           />

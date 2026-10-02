@@ -37,6 +37,11 @@ class LinkRole(enum.StrEnum):
     backup = "backup"
 
 
+class RoomKind(enum.StrEnum):
+    cpd = "cpd"
+    rack = "rack"
+
+
 class LifecycleStatus(enum.StrEnum):
     active = "active"
     spare = "spare"
@@ -73,6 +78,10 @@ class Site(TimestampMixin, Base):
     devices: Mapped[list["Device"]] = relationship(back_populates="site")
     links: Mapped[list["InternetLink"]] = relationship(back_populates="site")
     vlans: Mapped[list["Vlan"]] = relationship(back_populates="site")
+    # A site's rooms, drawing and cluster go with it; links, devices and VLANs must be removed first.
+    rooms: Mapped[list["Room"]] = relationship(back_populates="site", cascade="all, delete-orphan")
+    topology: Mapped["Topology | None"] = relationship(back_populates="site", cascade="all, delete-orphan")
+    cluster: Mapped["Cluster | None"] = relationship(back_populates="site", cascade="all, delete-orphan")
 
 
 class Device(TimestampMixin, Base):
@@ -149,3 +158,64 @@ class Vlan(TimestampMixin, Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
     site: Mapped[Site] = relationship(back_populates="vlans")
+
+
+class Room(TimestampMixin, Base):
+    """A CPD or an access rack of a site. Every site has at least one."""
+
+    __tablename__ = "rooms"
+    __table_args__ = (UniqueConstraint("site_id", "code", name="uq_rooms_site_code"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    site_id: Mapped[int] = mapped_column(ForeignKey("sites.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[RoomKind] = mapped_column(_enum(RoomKind, "room_kind"))
+    code: Mapped[str] = mapped_column(String(64))
+    name: Mapped[str] = mapped_column(String(200))
+    building: Mapped[str | None] = mapped_column(String(200))
+    # The switch of the site's topology that lives here; its ports and links show on the room page.
+    node_id: Mapped[str | None] = mapped_column(String(64))
+    # Map position; when empty the room is placed from the topology drawing (or at the site).
+    latitude: Mapped[float | None] = mapped_column(Float)
+    longitude: Mapped[float | None] = mapped_column(Float)
+    cameras: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    cooling: Mapped[str | None] = mapped_column(String(200))
+    access: Mapped[str | None] = mapped_column(String(120))
+    power_capacity_kw: Mapped[float | None] = mapped_column(Float)
+    # [{"name": "RK-01 · Rede", "heightU": 42}]; the first rack holds the network equipment.
+    racks: Mapped[list[dict]] = mapped_column(JSON, default=list, server_default=text("'[]'"))
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    site: Mapped[Site] = relationship(back_populates="rooms")
+
+
+class Topology(TimestampMixin, Base):
+    """A site's Layer 2 drawing: header fields plus the nodes, links and annotations as a document."""
+
+    __tablename__ = "topologies"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    site_id: Mapped[int] = mapped_column(ForeignKey("sites.id", ondelete="CASCADE"), unique=True)
+    name: Mapped[str] = mapped_column(String(200))
+    city: Mapped[str | None] = mapped_column(String(120))
+    revision: Mapped[str | None] = mapped_column(String(32))
+    date: Mapped[str | None] = mapped_column(String(32))
+    author: Mapped[str | None] = mapped_column(String(120))
+    document: Mapped[dict] = mapped_column(JSON)
+
+    site: Mapped[Site] = relationship(back_populates="topology")
+
+
+class Cluster(TimestampMixin, Base):
+    """A site's virtualization cluster: hosts, datastores and storage array as a document."""
+
+    __tablename__ = "clusters"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    site_id: Mapped[int] = mapped_column(ForeignKey("sites.id", ondelete="CASCADE"), unique=True)
+    name: Mapped[str] = mapped_column(String(120))
+    vcenter: Mapped[str | None] = mapped_column(String(200))
+    ha_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
+    drs: Mapped[str | None] = mapped_column(String(32))
+    document: Mapped[dict] = mapped_column(JSON)
+
+    site: Mapped[Site] = relationship(back_populates="cluster")

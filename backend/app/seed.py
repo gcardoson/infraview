@@ -7,7 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
-from app.models import InternetLink, LinkRole, Site, Vlan
+from app.initial_data import DEFAULT_ROOM, initial_for
+from app.models import Cluster, InternetLink, LinkRole, Room, Site, Topology, Vlan
 
 SAMPLE = [
     {
@@ -133,6 +134,12 @@ def main() -> None:
             # The site's VLAN register starts with every VLAN its links carry.
             vlans = {v["vlan_id"]: v for link in entry["links"] for v in link.get("vlans", [])}
             site.vlans = [Vlan(**v) for _, v in sorted(vlans.items())]
+            initial = initial_for(site.code)
+            site.rooms = [Room(**room) for room in (initial["rooms"] if initial else [DEFAULT_ROOM])]
+            if initial and initial["topology"]:
+                site.topology = Topology(**initial["topology"])
+            if initial and initial["cluster"]:
+                site.cluster = Cluster(**initial["cluster"])
             session.add(site)
         session.commit()
         print(f"Dados de exemplo criados: {len(SAMPLE)} sites.")

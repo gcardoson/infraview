@@ -1,14 +1,12 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { api } from "../api";
 import { PlantTabs } from "../components/PlantTabs";
-import { useResource } from "../components/useResource";
+import { useInventory } from "../inventory";
 import {
   type Cluster,
   type Datastore,
   type DatastoreType,
   type Host,
-  buildClusters,
   clusterTotals,
   cores,
   emptySlots,
@@ -18,6 +16,7 @@ import {
   installedGb,
   maxGb,
   threads,
+  toCluster,
   useClusterSimulation,
 } from "./data";
 
@@ -386,10 +385,19 @@ interface ColumnProps {
 
 export function ServersPage() {
   const [params, setParams] = useSearchParams();
-  const sites = useResource(useCallback(() => api.sites.list(), []));
-  const clusters = useMemo(() => buildClusters(sites.items), [sites.items]);
+  const inventory = useInventory();
+  const clusters = useMemo(
+    () =>
+      inventory.clusters
+        .flatMap((record) => {
+          const site = inventory.sites.find((s) => s.id === record.site_id);
+          return site ? [toCluster(record, site)] : [];
+        })
+        .sort((a, b) => a.siteCode.localeCompare(b.siteCode)),
+    [inventory.clusters, inventory.sites],
+  );
   const clusterId = params.get("cluster") ?? clusters[0]?.id;
-  const base = sites.loading ? null : (clusters.find((c) => c.id === clusterId) ?? clusters[0] ?? null);
+  const base = inventory.loading ? null : (clusters.find((c) => c.id === clusterId) ?? clusters[0] ?? null);
   const cluster = useClusterSimulation(base);
   const [selected, setSelected] = useState<string | null>(null);
   const toggle = (id: string) => setSelected((current) => (current === id ? null : id));
@@ -417,7 +425,8 @@ export function ServersPage() {
         </span>
       </div>
 
-      {sites.error && <div className="banner error">Erro ao carregar sites: {sites.error}</div>}
+      {inventory.error && <div className="banner error">Erro ao carregar dados: {inventory.error}</div>}
+      {!cluster && !inventory.loading && <p className="muted">Nenhum cluster cadastrado.</p>}
 
       {cluster && t && (
         <>
