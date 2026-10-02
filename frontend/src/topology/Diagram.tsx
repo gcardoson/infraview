@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { type Endpoint, type Point, type SiteTopology, type TopoLink, type TopoNode } from "./data";
 import { type LinkState, type NodeHealth, hasDevice, linkState } from "./status";
 
@@ -13,6 +14,8 @@ interface Props {
   /* The event lets the page tell a plain click from Ctrl/Shift+click (add to the selection). */
   onSelect: (s: Selection, e?: React.MouseEvent) => void;
   onHover: (s: Selection, e?: React.MouseEvent) => void;
+  /* Editing: devices can be dragged; called with the frame's new top-left corner. */
+  onMoveNode?: (id: string, x: number, y: number) => void;
 }
 
 /* Squeeze a label that would overflow its frame (SVG text doesn't wrap). */
@@ -116,10 +119,21 @@ function Faceplate({ x, y, w, ports }: { x: number; y: number; w: number; ports:
   );
 }
 
-function NodeShape({ node, health, active, onSelect, onHover }: { node: TopoNode; health?: NodeHealth; active: boolean } & Pick<Props, "onSelect" | "onHover">) {
+function NodeShape({
+  node,
+  health,
+  active,
+  onSelect,
+  onHover,
+  onDragStart,
+}: { node: TopoNode; health?: NodeHealth; active: boolean; onDragStart?: (e: React.PointerEvent, node: TopoNode) => void } & Pick<
+  Props,
+  "onSelect" | "onHover"
+>) {
   const status = health?.status ?? "none";
   const select = { kind: "node", id: node.id } as const;
   const events = {
+    onPointerDown: onDragStart && ((e: React.PointerEvent) => onDragStart(e, node)),
     onClick: (e: React.MouseEvent) => {
       e.stopPropagation();
       onSelect(select, e);
@@ -212,7 +226,32 @@ function NodeShape({ node, health, active, onSelect, onHover }: { node: TopoNode
   );
 }
 
-export function Diagram({ topology, health, selected, hovered, onSelect, onHover }: Props) {
+export function Diagram({ topology, health, selected, hovered, onSelect, onHover, onMoveNode }: Props) {
+  const svg = useRef<SVGSVGElement>(null);
+  const toSvg = (e: { clientX: number; clientY: number }) => {
+    const m = svg.current?.getScreenCTM();
+    if (!m) return { x: 0, y: 0 };
+    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+    return { x: p.x, y: p.y };
+  };
+  const dragStart =
+    onMoveNode &&
+    ((e: React.PointerEvent, node: TopoNode) => {
+      if (e.button !== 0) return;
+      const start = toSvg(e);
+      const origin = { x: node.x, y: node.y };
+      const move = (ev: PointerEvent) => {
+        const p = toSvg(ev);
+        // Snap to the drawing's 2-unit grid so cables stay straight.
+        onMoveNode(node.id, Math.round((origin.x + p.x - start.x) / 2) * 2, Math.round((origin.y + p.y - start.y) / 2) * 2);
+      };
+      const up = () => {
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+    });
   const focus = hovered ?? selected;
   // What stays lit when something is focused: the item, and for a device its links and neighbours.
   const lit = new Set<string>();
@@ -237,7 +276,8 @@ export function Diagram({ topology, health, selected, hovered, onSelect, onHover
 
   return (
     <svg
-      className={`topo-svg${focus ? " focused" : ""}`}
+      ref={svg}
+      className={`topo-svg${focus ? " focused" : ""}${onMoveNode ? " editing" : ""}`}
       style={{ "--ts": topology.textScale ?? 1 } as React.CSSProperties}
       viewBox={`${vx} ${vy} ${vw} ${vh}`}
       role="img"
@@ -261,7 +301,15 @@ export function Diagram({ topology, health, selected, hovered, onSelect, onHover
         <LinkShape key={l.id} link={l} state={linkState(l, health)} active={lit.has(`l:${l.id}`)} onSelect={onSelect} onHover={onHover} />
       ))}
       {topology.nodes.map((n) => (
-        <NodeShape key={n.id} node={n} health={health[n.id]} active={lit.has(`n:${n.id}`)} onSelect={onSelect} onHover={onHover} />
+        <NodeShape
+          key={n.id}
+          node={n}
+          health={health[n.id]}
+          active={lit.has(`n:${n.id}`)}
+          onSelect={onSelect}
+          onHover={onHover}
+          onDragStart={dragStart}
+        />
       ))}
     </svg>
   );

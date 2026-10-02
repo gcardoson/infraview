@@ -12,6 +12,7 @@ import { VlansPage } from "./pages/VlansPage";
 import { ServersPage } from "./servers/ServersPage";
 import { ExplorerPage } from "./explorer/ExplorerPage";
 import { RoomPage } from "./explorer/RoomPage";
+import { TopologyEditorPage } from "./topology/TopologyEditor";
 import { TopologyPage } from "./topology/TopologyPage";
 import { WanPage } from "./wan/WanPage";
 import "./styles.css";
@@ -27,6 +28,8 @@ createRoot(document.getElementById("root")!).render(
           <Route path="/wan" element={<WanPage />} />
           <Route path="/lan" element={<Navigate to="/topologia" replace />} />
           <Route path="/topologia" element={<TopologyPage />} />
+          <Route path="/topologia/nova" element={<TopologyEditorPage />} />
+          <Route path="/topologia/editar" element={<TopologyEditorPage />} />
           <Route path="/servidores" element={<ServersPage />} />
           <Route path="/sites" element={<SitesPage />} />
           <Route path="/vlans" element={<VlansPage />} />

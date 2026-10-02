@@ -1,11 +1,12 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { MEDIUM_LABEL, MEDIUM_SHORT, type SiteTopology, type TopoLink, type TopoNode, nodeLabel } from "./data";
 import { Diagram, type Selection } from "./Diagram";
 import { isSwitchNode } from "./switches";
 import { SwitchView } from "./SwitchView";
 import { LINK_LABEL, type LinkState, type NodeHealth, STATUS_LABEL, hasDevice, linkState, useTopologyStatus } from "./status";
 import { PlantTabs } from "../components/PlantTabs";
+import { EditActions } from "../components/EditActions";
 import { useInventory } from "../inventory";
 
 const ZOOMS = [1, 1.25, 1.5, 2];
@@ -60,19 +61,35 @@ function useFollow() {
 export function TopologyPage() {
   const [params] = useSearchParams();
   const inventory = useInventory();
+  const navigate = useNavigate();
   const topologies = inventory.topologies;
   const topology = topologies.find((t) => t.code === params.get("site")) ?? topologies[0];
+  const canAdd = inventory.sites.some((s) => !topologies.some((t) => t.siteId === s.id));
+  const actions = (
+    <EditActions
+      addLabel={canAdd ? "Nova topologia para um site" : "Todos os sites já têm topologia"}
+      onAdd={canAdd ? () => navigate("/topologia/nova") : undefined}
+      editLabel={topology ? `Editar a topologia de ${topology.code}` : "Nenhuma topologia para editar"}
+      onEdit={topology ? () => navigate(`/topologia/editar?site=${encodeURIComponent(topology.code)}`) : undefined}
+    />
+  );
   if (!topology)
     return (
       <div className="topo-page">
         {inventory.error && <div className="banner error">Erro ao carregar dados: {inventory.error}</div>}
-        <p className="muted">{inventory.loading ? "Carregando…" : "Nenhuma topologia cadastrada."}</p>
+        <header className="topo-head">
+          <div>
+            <div className="eyebrow">Topologia · camada 2</div>
+            <h1>{inventory.loading ? "Carregando…" : "Nenhuma topologia cadastrada"}</h1>
+          </div>
+          <div className="topo-head-right">{actions}</div>
+        </header>
       </div>
     );
-  return <TopologyView key={topology.code} topology={topology} topologies={topologies} />;
+  return <TopologyView key={topology.code} topology={topology} topologies={topologies} actions={actions} />;
 }
 
-function TopologyView({ topology, topologies }: { topology: SiteTopology; topologies: SiteTopology[] }) {
+function TopologyView({ topology, topologies, actions }: { topology: SiteTopology; topologies: SiteTopology[]; actions: React.ReactNode }) {
   const [params, setParams] = useSearchParams();
   const health = useTopologyStatus(topology);
   // The Explorer links straight to a device with ?node=.
@@ -161,6 +178,7 @@ function TopologyView({ topology, topologies }: { topology: SiteTopology; topolo
           <span className="badge sim" title="Enlaces e portas vêm do desenho oficial; o status dos ativos é simulado">
             Status simulado
           </span>
+          {actions}
         </div>
       </header>
 
