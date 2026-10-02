@@ -5,6 +5,7 @@ import { Diagram, type Selection } from "./Diagram";
 import { isSwitchNode } from "./switches";
 import { SwitchView } from "./SwitchView";
 import { LINK_LABEL, type LinkState, type NodeHealth, STATUS_LABEL, hasDevice, linkState, useTopologyStatus } from "./status";
+import { PlantTabs } from "../components/PlantTabs";
 
 const ZOOMS = [1, 1.25, 1.5, 2];
 const ago = (d: Date) => {
@@ -137,19 +138,11 @@ export function TopologyPage() {
           </div>
         </div>
         <div className="topo-head-right">
-          <div className="topo-tabs" role="tablist" aria-label="Planta">
-            {TOPOLOGIES.map((t) => (
-              <button
-                key={t.code}
-                role="tab"
-                aria-selected={t.code === topology.code}
-                className={t.code === topology.code ? "active" : ""}
-                onClick={() => switchSite(t.code)}
-              >
-                {t.code}
-              </button>
-            ))}
-          </div>
+          <PlantTabs
+            plants={TOPOLOGIES.map((t) => ({ key: t.code, code: t.code, name: t.name }))}
+            value={topology.code}
+            onChange={switchSite}
+          />
           <span className="badge sim" title="Enlaces e portas vêm do desenho oficial; o status dos ativos é simulado">
             Status simulado
           </span>

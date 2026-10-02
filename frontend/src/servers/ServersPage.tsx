@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
+import { PlantTabs } from "../components/PlantTabs";
 import { useResource } from "../components/useResource";
 import {
   type Cluster,
@@ -403,22 +404,14 @@ export function ServersPage() {
           <div className="eyebrow">Servidores</div>
           <h1>Cluster de virtualização</h1>
         </div>
-        <label className="site-picker">
-          <span>Cluster</span>
-          <select
-            value={cluster?.id ?? ""}
-            onChange={(e) => {
-              setSelected(null);
-              setParams({ cluster: e.target.value });
-            }}
-          >
-            {clusters.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} · {c.siteName}
-              </option>
-            ))}
-          </select>
-        </label>
+        <PlantTabs
+          plants={clusters.map((c) => ({ key: c.id, code: c.siteCode, name: `${c.siteName} · ${c.name}` }))}
+          value={base?.id ?? null}
+          onChange={(id) => {
+            setSelected(null);
+            setParams({ cluster: id });
+          }}
+        />
         <span className="badge sim" title="Hosts, memória e datastores são fictícios até a integração com vCenter, LibreNMS e PRTG">
           Dados fictícios
         </span>

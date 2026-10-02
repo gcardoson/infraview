@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { type InternetLink, ROLE_LABEL, api } from "../api";
 import { useResource } from "../components/useResource";
+import { PlantTabs } from "../components/PlantTabs";
 import { LinkForm } from "./LinkForm";
 import { HA_LABEL, type LinkHealth, type LogEntry, useWanSimulation } from "./simulation";
 import { Sparkline } from "./Sparkline";
@@ -105,20 +106,11 @@ export function WanPage() {
           <div className="eyebrow">Internet</div>
           <h1>Links de internet</h1>
         </div>
-        <label className="site-picker">
-          <span>Site</span>
-          <select
-            value={siteId ?? ""}
-            onChange={(e) => setParams({ site: e.target.value })}
-            disabled={!sites.items.length}
-          >
-            {sites.items.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.code} · {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <PlantTabs
+          plants={sites.items.map((s) => ({ key: String(s.id), code: s.code, name: s.name }))}
+          value={siteId === null ? null : String(siteId)}
+          onChange={(id) => setParams({ site: id })}
+        />
         <span className="badge sim" title="Status, tráfego e log são fictícios até a integração com LibreNMS e PRTG">
           Telemetria simulada
         </span>
