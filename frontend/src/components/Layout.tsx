@@ -34,6 +34,9 @@ export function Layout() {
           <NavLink to="/sites" className="layer-tab">
             Sites
           </NavLink>
+          <NavLink to="/vlans" className="layer-tab">
+            VLANs
+          </NavLink>
         </nav>
         <Clock />
       </header>

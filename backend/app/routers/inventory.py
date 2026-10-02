@@ -26,3 +26,12 @@ links = crud_router(
     filters=("site_id",),
     order_by="provider",
 )
+
+vlans = crud_router(
+    model=models.Vlan,
+    create_schema=schemas.VlanCreate,
+    update_schema=schemas.VlanUpdate,
+    read_schema=schemas.VlanRead,
+    filters=("site_id",),
+    order_by="vlan_id",
+)

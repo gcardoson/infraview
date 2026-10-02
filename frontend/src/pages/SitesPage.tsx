@@ -92,7 +92,7 @@ export function SitesPage() {
       await api.sites.remove(site.id);
       sites.reload();
     } catch (e) {
-      setError(`${(e as Error).message}. Remova os links e equipamentos do site antes.`);
+      setError(`${(e as Error).message}. Remova os links, VLANs e equipamentos do site antes.`);
     }
   };
 

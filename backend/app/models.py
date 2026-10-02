@@ -11,6 +11,8 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
+    false,
     func,
     text,
     true,
@@ -70,6 +72,7 @@ class Site(TimestampMixin, Base):
 
     devices: Mapped[list["Device"]] = relationship(back_populates="site")
     links: Mapped[list["InternetLink"]] = relationship(back_populates="site")
+    vlans: Mapped[list["Vlan"]] = relationship(back_populates="site")
 
 
 class Device(TimestampMixin, Base):
@@ -125,3 +128,24 @@ class InternetLink(TimestampMixin, Base):
     prtg_object_id: Mapped[int | None] = mapped_column(Integer)
 
     site: Mapped[Site] = relationship(back_populates="links")
+
+
+class Vlan(TimestampMixin, Base):
+    """A VLAN of a site's internal network; the VLAN number is unique within the site."""
+
+    __tablename__ = "vlans"
+    __table_args__ = (UniqueConstraint("site_id", "vlan_id", name="uq_vlans_site_vlan"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    site_id: Mapped[int] = mapped_column(ForeignKey("sites.id", ondelete="RESTRICT"), index=True)
+    vlan_id: Mapped[int] = mapped_column(Integer)
+    name: Mapped[str] = mapped_column(String(120))
+    subnet: Mapped[str | None] = mapped_column(String(64))
+    gateway_ip: Mapped[str | None] = mapped_column(String(45))
+    dhcp: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    status: Mapped[LifecycleStatus] = mapped_column(
+        _enum(LifecycleStatus, "lifecycle_status"), default=LifecycleStatus.active
+    )
+    notes: Mapped[str | None] = mapped_column(Text)
+
+    site: Mapped[Site] = relationship(back_populates="vlans")

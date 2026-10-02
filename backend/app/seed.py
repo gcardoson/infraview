@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
-from app.models import InternetLink, LinkRole, Site
+from app.models import InternetLink, LinkRole, Site, Vlan
 
 SAMPLE = [
     {
@@ -130,6 +130,9 @@ def main() -> None:
         for entry in SAMPLE:
             site = Site(**entry["site"])
             site.links = [InternetLink(**link) for link in entry["links"]]
+            # The site's VLAN register starts with every VLAN its links carry.
+            vlans = {v["vlan_id"]: v for link in entry["links"] for v in link.get("vlans", [])}
+            site.vlans = [Vlan(**v) for _, v in sorted(vlans.items())]
             session.add(site)
         session.commit()
         print(f"Dados de exemplo criados: {len(SAMPLE)} sites.")

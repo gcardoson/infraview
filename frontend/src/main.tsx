@@ -8,6 +8,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { SitesPage } from "./pages/SitesPage";
+import { VlansPage } from "./pages/VlansPage";
 import { ServersPage } from "./servers/ServersPage";
 import { ExplorerPage } from "./explorer/ExplorerPage";
 import { RoomPage } from "./explorer/RoomPage";
@@ -28,6 +29,7 @@ createRoot(document.getElementById("root")!).render(
           <Route path="/topologia" element={<TopologyPage />} />
           <Route path="/servidores" element={<ServersPage />} />
           <Route path="/sites" element={<SitesPage />} />
+          <Route path="/vlans" element={<VlansPage />} />
           <Route path="*" element={<Navigate to="/explorer" replace />} />
         </Route>
       </Routes>

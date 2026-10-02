@@ -73,6 +73,10 @@ cluster de virtualização:
 - armazenamento: capacidade, uso, provisionamento e overcommit, divisão por tipo (VMFS, NFS,
   vSAN), baias do storage e a lista de datastores compartilhados e locais.
 
+**VLANs** (`/vlans`, ao lado de Sites), cadastro real das VLANs de cada planta: número (1–4094,
+único por site), nome, sub-rede, gateway, DHCP, status e observações. A migração 0004 já preenche o
+cadastro com as VLANs listadas nos links de internet.
+
 Status, tráfego, alertas e log ainda são **simulados** no navegador, só para visualizar a tela em
 funcionamento. Os campos `librenms_device_id` e `prtg_object_id` já existem para a próxima fase,
 que vai puxar dados reais das APIs do LibreNMS e do PRTG.
@@ -158,7 +162,7 @@ npm run dev
 backend/
   app/models.py         modelos: Site, Device, InternetLink
   app/schemas.py        validação de entrada e saída (Pydantic)
-  app/routers/          rotas CRUD em /api/sites, /api/devices, /api/links
+  app/routers/          rotas CRUD em /api/sites, /api/devices, /api/links, /api/vlans
   app/seed.py           dados de exemplo (inclui coordenadas dos sites de exemplo)
   alembic/              migrações do banco
   tests/                testes da API

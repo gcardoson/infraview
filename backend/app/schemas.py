@@ -156,3 +156,43 @@ class InternetLinkRead(InternetLinkBase, ORMModel):
     id: int
     created_at: datetime
     updated_at: datetime
+
+
+class VlanBase(BaseModel):
+    site_id: int
+    vlan_id: int = Field(ge=1, le=4094)
+    name: str = Field(min_length=1, max_length=120)
+    subnet: IPv4Network | IPv6Network | None = None
+    gateway_ip: IPv4Address | IPv6Address | None = None
+    dhcp: bool = False
+    status: LifecycleStatus = LifecycleStatus.active
+    notes: str | None = None
+
+    @field_serializer("subnet", "gateway_ip")
+    def _to_str(self, value: object) -> str | None:
+        return str(value) if value is not None else None
+
+
+class VlanCreate(VlanBase):
+    pass
+
+
+class VlanUpdate(BaseModel):
+    site_id: int | None = None
+    vlan_id: int | None = Field(default=None, ge=1, le=4094)
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    subnet: IPv4Network | IPv6Network | None = None
+    gateway_ip: IPv4Address | IPv6Address | None = None
+    dhcp: bool | None = None
+    status: LifecycleStatus | None = None
+    notes: str | None = None
+
+    @field_serializer("subnet", "gateway_ip")
+    def _to_str(self, value: object) -> str | None:
+        return str(value) if value is not None else None
+
+
+class VlanRead(VlanBase, ORMModel):
+    id: int
+    created_at: datetime
+    updated_at: datetime

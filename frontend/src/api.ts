@@ -38,7 +38,21 @@ export interface InternetLink {
   notes: string | null;
 }
 
+/* A VLAN in a site's register (the VLAN catalogue screen), unlike Vlan which a link lists. */
+export interface SiteVlan {
+  id: number;
+  site_id: number;
+  vlan_id: number;
+  name: string;
+  subnet: string | null;
+  gateway_ip: string | null;
+  dhcp: boolean;
+  status: LifecycleStatus;
+  notes: string | null;
+}
+
 export type SitePayload = Omit<Site, "id">;
+export type VlanPayload = Omit<SiteVlan, "id">;
 export type LinkPayload = Omit<InternetLink, "id">;
 
 interface ValidationIssue {
@@ -84,6 +98,7 @@ function crud<T, P>(resource: string) {
 export const api = {
   sites: crud<Site, SitePayload>("sites"),
   links: crud<InternetLink, LinkPayload>("links"),
+  vlans: crud<SiteVlan, VlanPayload>("vlans"),
 };
 
 export const ROLE_LABEL: Record<LinkRole, string> = {

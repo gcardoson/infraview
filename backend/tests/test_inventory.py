@@ -109,3 +109,28 @@ def test_site_coordinates_are_validated(client: TestClient) -> None:
 
     response = client.patch(f"/api/sites/{site['id']}", json={"latitude": 95})
     assert response.status_code == 422
+
+
+def test_vlan_crud_and_unique_per_site(client: TestClient) -> None:
+    site = make_site(client)
+    other = make_site(client, "SP01")
+    payload = {"site_id": site["id"], "vlan_id": 10, "name": "Corporativa", "subnet": "10.20.10.0/24"}
+    created = client.post("/api/vlans", json={**payload, "gateway_ip": "10.20.10.1", "dhcp": True})
+    assert created.status_code == 201, created.text
+    vlan = created.json()
+    assert vlan["subnet"] == "10.20.10.0/24"
+    assert vlan["gateway_ip"] == "10.20.10.1"
+
+    # Same number on the same site conflicts; on another site it is fine.
+    assert client.post("/api/vlans", json=payload).status_code == 409
+    assert client.post("/api/vlans", json={**payload, "site_id": other["id"]}).status_code == 201
+    assert client.post("/api/vlans", json={**payload, "vlan_id": 4095}).status_code == 422
+    bad_subnet = {**payload, "vlan_id": 20, "subnet": "10.20.10.1/24"}
+    assert client.post("/api/vlans", json=bad_subnet).status_code == 422
+
+    listed = client.get("/api/vlans", params={"site_id": site["id"]}).json()
+    assert [v["vlan_id"] for v in listed] == [10]
+
+    updated = client.patch(f"/api/vlans/{vlan['id']}", json={"name": "Escritório"}).json()
+    assert updated["name"] == "Escritório"
+    assert client.delete(f"/api/vlans/{vlan['id']}").status_code == 204
