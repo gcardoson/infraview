@@ -36,7 +36,12 @@ Primeira fase: **inventário**. A interface é organizada por camadas. Prontas a
   (principal/secundário/backup), IP fixo, máscara, gateway, mascaramento (NAT), equipamento e
   porta SD-WAN e VLANs internas;
 - topologia animada (operadoras → SD-WAN → core/LAN) ao centro; à esquerda os links, tráfego, latência e
-  disponibilidade 24h; à direita o log de eventos e os alertas recentes.
+  disponibilidade 24h; à direita o log de eventos e os alertas recentes;
+- o SD-WAN Edge é o par VMware VeloCloud Edge 620 em alta disponibilidade, desenhado como dois
+  equipamentos empilhados com a unidade ativa marcada. O status do HA (sincronizado,
+  ressincronizando, sem sincronismo) aparece no desenho e no painel de indicadores; perda de
+  sincronismo, failover e retorno entram no log e nos alertas com a tag `HA` (simulado até a
+  integração com o VeloCloud Orchestrator).
 
 **Topologia** (`/topologia`), a camada 2 de cada planta, adaptada dos desenhos oficiais do Visio
 (BR-MAT rev. 2 e BR-ACS rev. 2):

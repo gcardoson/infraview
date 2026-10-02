@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { type InternetLink, ROLE_LABEL, api } from "../api";
 import { useResource } from "../components/useResource";
 import { LinkForm } from "./LinkForm";
-import { type LinkHealth, type LogEntry, useWanSimulation } from "./simulation";
+import { HA_LABEL, type LinkHealth, type LogEntry, useWanSimulation } from "./simulation";
 import { Sparkline } from "./Sparkline";
 import { HEALTH_COLOR, Topology } from "./Topology";
 
@@ -66,7 +66,7 @@ export function WanPage() {
         .sort((a, b) => ["primary", "secondary", "backup"].indexOf(a.role) - ["primary", "secondary", "backup"].indexOf(b.role)),
     [links.items, siteId],
   );
-  const { telemetry, log } = useWanSimulation(siteLinks);
+  const { telemetry, ha, log } = useWanSimulation(siteLinks);
   const selected = siteLinks.find((l) => l.id === selectedId) ?? null;
 
   const siteRef = useRef(siteId);
@@ -82,7 +82,8 @@ export function WanPage() {
         Math.max(1, active.flatMap((l) => telemetry.get(l.id)?.availability ?? []).length)) *
       100
     : 0;
-  const incidents = siteLinks.filter((l) => ["down", "degraded"].includes(health(l))).length;
+  const incidents =
+    siteLinks.filter((l) => ["down", "degraded"].includes(health(l))).length + (siteLinks.length && ha.state === "lost" ? 1 : 0);
   const capacity = siteLinks.reduce((sum, l) => sum + (l.bandwidth_mbps ?? 0), 0);
   const historyLength = Math.max(0, ...siteLinks.map((l) => telemetry.get(l.id)?.history.length ?? 0));
   const aggregate = Array.from({ length: historyLength }, (_, i) =>
@@ -136,6 +137,15 @@ export function WanPage() {
               <span className="kpi-label">Incidentes</span>
               <span className={`kpi-value ${incidents ? "crit" : ""}`}>{String(incidents).padStart(2, "0")}</span>
             </div>
+            {siteLinks.length > 0 && (
+              <div className={`kpi-ha ha-${ha.state}`} title="Par VMware VeloCloud Edge 620 em alta disponibilidade (simulado)">
+                <span className="kpi-label">SD-WAN Edge · HA</span>
+                <span className="kpi-ha-value">
+                  <i />
+                  {HA_LABEL[ha.state]} · #{ha.active} ativo
+                </span>
+              </div>
+            )}
           </section>
 
           <section className="panel grow">
@@ -238,7 +248,7 @@ export function WanPage() {
               </span>
             </div>
             {siteLinks.length ? (
-              <Topology links={siteLinks} telemetry={telemetry} selectedId={selectedId} onSelect={setSelectedId} />
+              <Topology links={siteLinks} telemetry={telemetry} ha={ha} selectedId={selectedId} onSelect={setSelectedId} />
             ) : (
               <div className="topo-empty muted">Cadastre links para ver a topologia.</div>
             )}

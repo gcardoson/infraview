@@ -5125,3 +5125,127 @@ button.port-sq:hover,
 .wan-side .log-msg {
   grid-column: 1 / -1;
 }
+
+/* SD-WAN edge HA pair */
+.edge-unit-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  fill: var(--muted);
+  text-anchor: end;
+}
+
+.edge-unit:not(.on) .edge-core {
+  fill: var(--idle);
+}
+
+.edge-unit:not(.on) .edge-inner {
+  stroke-opacity: 0.45;
+}
+
+.ha-heartbeat {
+  stroke: var(--ok);
+  stroke-width: 2;
+  stroke-dasharray: 3 3;
+  animation: ha-beat 1.2s linear infinite;
+}
+
+.ha-status circle {
+  fill: var(--ok);
+}
+
+.ha-status text {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  fill: var(--ok);
+}
+
+.ha-syncing .ha-heartbeat,
+.ha-syncing .ha-status circle {
+  stroke: var(--warn);
+}
+
+.ha-syncing .ha-status circle {
+  fill: var(--warn);
+  animation: blink 1s ease-in-out infinite;
+}
+
+.ha-syncing .ha-status text {
+  fill: var(--warn);
+}
+
+.ha-lost .ha-heartbeat {
+  stroke: var(--crit);
+  stroke-dasharray: 2 5;
+  animation: none;
+}
+
+.ha-lost .ha-status circle {
+  fill: var(--crit);
+  animation: blink 0.8s ease-in-out infinite;
+}
+
+.ha-lost .ha-status text {
+  fill: var(--crit);
+}
+
+.edge-unit.unit-lost .plate-top {
+  stroke: var(--crit);
+  stroke-width: 1.5;
+}
+
+.edge-unit.unit-lost .edge-inner {
+  stroke: var(--crit);
+  stroke-opacity: 0.8;
+}
+
+.edge-unit.unit-lost .edge-core {
+  fill: var(--crit);
+}
+
+.ha-mark {
+  fill: var(--crit);
+  font-size: 18px;
+  text-anchor: middle;
+  animation: blink 0.8s ease-in-out infinite;
+}
+
+@keyframes ha-beat {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+.kpi-ha {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--line);
+  padding-top: 0.5rem;
+}
+
+.kpi-ha-value {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--ok);
+}
+
+.kpi-ha-value i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.kpi-ha.ha-syncing .kpi-ha-value {
+  color: var(--warn);
+}
+
+.kpi-ha.ha-lost .kpi-ha-value {
+  color: var(--crit);
+}
+
+.kpi-ha.ha-lost .kpi-ha-value i {
+  animation: blink 0.8s ease-in-out infinite;
+}

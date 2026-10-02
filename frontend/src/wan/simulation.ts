@@ -20,6 +20,25 @@ export interface LinkTelemetry {
 
 export type LogLevel = "info" | "warn" | "error";
 
+/* The site's SD-WAN edge: two VMware VeloCloud Edge 620 in high availability (active/standby). */
+export const EDGE_MODEL = "VMware VeloCloud Edge 620";
+export type HaState = "synced" | "syncing" | "lost";
+
+export interface EdgeHa {
+  state: HaState;
+  /* Which of the pair (1 or 2) is forwarding traffic. */
+  active: 1 | 2;
+  since: Date;
+  // Ticks left in the current loss or resync, if any.
+  incident: number;
+}
+
+export const HA_LABEL: Record<HaState, string> = {
+  synced: "HA sincronizado",
+  syncing: "HA ressincronizando",
+  lost: "HA sem sincronismo",
+};
+
 export interface LogEntry {
   id: number;
   time: Date;
@@ -98,6 +117,46 @@ function genericEvent(link: InternetLink, t: LinkTelemetry): Omit<LogEntry, "id"
   return pick(options);
 }
 
+const initialHa = (): EdgeHa => ({ state: "synced", active: 1, since: new Date(), incident: 0 });
+
+/* The pair mostly stays in sync; now and then the heartbeat is lost, the pair resyncs, or it fails over. */
+function stepHa(ha: EdgeHa, device: string, events: Omit<LogEntry, "id" | "time">[]): EdgeHa {
+  const next = { ...ha };
+  const unit = (n: 1 | 2) => `${device} #${n}`;
+  const standby = (ha.active === 1 ? 2 : 1) as 1 | 2;
+  if (next.incident > 0) {
+    next.incident -= 1;
+    if (next.incident > 0) return next;
+    if (ha.state === "lost") {
+      next.state = "syncing";
+      next.incident = 3;
+      next.since = new Date();
+      events.push({ tag: "HA", level: "warn", message: `Heartbeat entre ${unit(1)} e ${unit(2)} restabelecido; ressincronizando configuração e sessões.` });
+    } else {
+      next.state = "synced";
+      next.since = new Date();
+      events.push({ tag: "HA", level: "info", message: `Sincronismo HA restabelecido: ${unit(next.active)} ativo, ${unit(next.active === 1 ? 2 : 1)} em standby.` });
+    }
+    return next;
+  }
+  const roll = Math.random();
+  if (roll < 0.008) {
+    next.state = "lost";
+    next.incident = Math.floor(rand(5, 11));
+    next.since = new Date();
+    events.push({ tag: "HA", level: "error", message: `Sincronismo HA perdido: ${unit(standby)} não responde ao heartbeat de ${unit(ha.active)}.` });
+  } else if (roll < 0.011) {
+    next.active = standby;
+    next.state = "syncing";
+    next.incident = 3;
+    next.since = new Date();
+    events.push({ tag: "HA", level: "warn", message: `Failover HA: ${unit(standby)} assumiu como ativo; ${unit(ha.active)} passou a standby.` });
+  } else if (roll < 0.05) {
+    events.push({ tag: "HA", level: "info", message: `Heartbeat HA ok: ${unit(ha.active)} ativo, ${unit(standby)} em standby e sincronizado.` });
+  }
+  return next;
+}
+
 function step(
   links: InternetLink[],
   state: Map<number, LinkTelemetry>,
@@ -162,19 +221,29 @@ function step(
 
 export function useWanSimulation(links: InternetLink[]) {
   const [telemetry, setTelemetry] = useState<Map<number, LinkTelemetry>>(new Map());
+  const [ha, setHa] = useState<EdgeHa>(initialHa);
   const [log, setLog] = useState<LogEntry[]>([]);
   const counter = useRef(0);
   const state = useRef(telemetry);
+  const haState = useRef(ha);
 
   useEffect(() => {
     const seeded = new Map(links.map((link) => [link.id, state.current.get(link.id) ?? initialTelemetry(link)]));
     state.current = seeded;
     setTelemetry(seeded);
 
+    const device = links.find((l) => l.sdwan_device)?.sdwan_device ?? "Edge";
+    // Each site has its own pair; start it in sync.
+    haState.current = initialHa();
+    setHa(haState.current);
     const timer = setInterval(() => {
       const { next, events } = step(links, state.current);
       state.current = next;
       setTelemetry(next);
+      if (links.length) {
+        haState.current = stepHa(haState.current, device, events);
+        setHa(haState.current);
+      }
       if (events.length) {
         const now = new Date();
         const entries = events.map((event) => ({ ...event, id: ++counter.current, time: now }));
@@ -184,5 +253,5 @@ export function useWanSimulation(links: InternetLink[]) {
     return () => clearInterval(timer);
   }, [links]);
 
-  return { telemetry, log };
+  return { telemetry, ha, log };
 }
