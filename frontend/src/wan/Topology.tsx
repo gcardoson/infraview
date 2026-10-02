@@ -36,6 +36,30 @@ function Plate({ x, y, w, h, depth, active }: { x: number; y: number; w: number;
   );
 }
 
+/*
+ * Starlink terminal, drawn in the same isometric plates as the other nodes: a tilted rectangular dish
+ * on a mast with a four-leg base, like the Starlink Business kit.
+ */
+function StarlinkDish({ x, y, active }: { x: number; y: number; active: boolean }) {
+  return (
+    <g className={`dish${active ? " active" : ""}`} transform={`translate(${x} ${y})`}>
+      <g className="dish-base">
+        <line x1={2} y1={41} x2={27} y2={38} />
+        <line x1={2} y1={41} x2={-40} y2={52} />
+        <line x1={2} y1={41} x2={50} y2={47} />
+        <line x1={2} y1={41} x2={18} y2={54} />
+        <circle cx={-40} cy={52} r={1.8} />
+        <circle cx={50} cy={47} r={1.8} />
+        <circle cx={18} cy={54} r={1.8} />
+      </g>
+      <rect x={-1.5} y={14} width={7} height={28} rx={1.5} className="plate-side dark" />
+      <polygon points="-40,14 4,18 34,-15 34,-11 4,22 -40,18" className="plate-side" />
+      <polygon points="-40,14 2,-18 34,-15 4,18" className="plate-top" />
+      <polygon points="-29,11 3,-12 24,-10 2,13" className="dish-inner" />
+    </g>
+  );
+}
+
 // Quantize usage so particle timing only changes on meaningful steps; changing
 // SVG animation timing on every tick would make the particles jump.
 function flow(t: LinkTelemetry | undefined, capacity: number | null) {
@@ -66,6 +90,8 @@ function Particles({ pathId, count, dur, color, reverse }: { pathId: string; cou
     </>
   );
 }
+
+const isStarlink = (link: InternetLink) => /starlink/i.test(`${link.provider} ${link.technology ?? ""}`);
 
 function uniqueVlans(links: InternetLink[]): Vlan[] {
   const seen = new Map<number, Vlan>();
@@ -170,8 +196,12 @@ export function Topology({ links, telemetry, ha, selectedId, onSelect }: Props) 
             <Particles pathId={pathId} count={count} dur={dur} color={color} />
             {health === "up" && <Particles pathId={pathId} count={Math.max(1, count - 1)} dur={dur * 1.4} color={color} reverse />}
 
-            <Plate x={x} y={ISP_Y} w={62} h={20} depth={9} active={health === "up"} />
-            <circle cx={x} cy={ISP_Y} r={4} fill={color} className={health === "up" ? "pulse" : undefined} />
+            {isStarlink(link) ? (
+              <StarlinkDish x={x} y={ISP_Y - 8} active={health === "up"} />
+            ) : (
+              <Plate x={x} y={ISP_Y} w={62} h={20} depth={9} active={health === "up"} />
+            )}
+            <circle cx={x} cy={isStarlink(link) ? ISP_Y - 8 : ISP_Y} r={4} fill={color} className={health === "up" ? "pulse" : undefined} />
             <text x={x} y={ISP_Y - 48} className="node-label">
               {link.provider.toUpperCase()}
             </text>

@@ -5237,3 +5237,34 @@ button.port-sq:hover,
 .kpi-ha.ha-lost .kpi-ha-value i {
   animation: blink 0.8s ease-in-out infinite;
 }
+
+/* Starlink dish on the Internet topology */
+.dish-base line {
+  stroke: #33413f;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+.dish-base circle {
+  fill: #33413f;
+}
+
+.dish .plate-top,
+.dish .plate-side {
+  stroke-linejoin: round;
+}
+
+.dish-inner {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.06);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.dish.active .plate-top {
+  stroke: var(--ok-dim);
+}
+
+.dish.active .dish-base line {
+  stroke: #3b4b48;
+}
