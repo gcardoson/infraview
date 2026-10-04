@@ -60,25 +60,249 @@ function shiftEnd(points: Point[], atStart: boolean, dx: number, dy: number): Po
 
 export function moveNode(topo: SiteTopology, id: string, x: number, y: number): SiteTopology {
   const node = topo.nodes.find((n) => n.id === id);
-  if (!node || (node.x === x && node.y === y)) return topo;
-  const [dx, dy] = [x - node.x, y - node.y];
-  const shiftPoint = (p: Point): Point => [p[0] + dx, p[1] + dy];
+  if (!node) return topo;
+  return moveSelection(topo, [`n:${id}`], x - node.x, y - node.y);
+}
+
+/*
+ * What the editor can select, as "n:<node id>", "l:<link id>", "a:<annotation index>" or
+ * "g:<area index>".
+ */
+export type Ref = string;
+
+const refsOf = (refs: Ref[], kind: string) => refs.filter((r) => r.startsWith(`${kind}:`)).map((r) => r.slice(2));
+
+/* Move a selection; cables between two moved devices move whole, cables to a fixed one stretch. */
+export function moveSelection(topo: SiteTopology, refs: Ref[], dx: number, dy: number): SiteTopology {
+  if (!dx && !dy) return topo;
+  const nodes = new Set(refsOf(refs, "n"));
+  const anns = new Set(refsOf(refs, "a").map(Number));
+  const groups = new Set(refsOf(refs, "g").map(Number));
+  const shift = (p: Point): Point => [p[0] + dx, p[1] + dy];
   return {
     ...topo,
-    nodes: topo.nodes.map((n) => (n.id === id ? { ...n, x, y } : n)),
+    nodes: topo.nodes.map((n) => (nodes.has(n.id) ? { ...n, x: n.x + dx, y: n.y + dy } : n)),
     links: topo.links.map((l): TopoLink => {
-      const a = l.a.node === id;
-      const b = l.b.node === id;
+      const a = nodes.has(l.a.node);
+      const b = nodes.has(l.b.node);
+      if (a && b) {
+        return { ...l, points: l.points.map(shift), labelAt: l.labelAt && shift(l.labelAt), breaks: l.breaks?.map(shift) };
+      }
       if (!a && !b) return l;
-      if (a && b) return { ...l, points: l.points.map(shiftPoint) };
-      return {
-        ...l,
-        points: shiftEnd(l.points, a, dx, dy),
-        labelAt: undefined,
-        breaks: l.breaks?.length ? [midpoint(shiftEnd(l.points, a, dx, dy))] : l.breaks,
-      };
+      const points = shiftEnd(l.points, a, dx, dy);
+      return { ...l, points, labelAt: undefined, breaks: l.breaks?.length ? [midpoint(points)] : l.breaks };
+    }),
+    annotations: topo.annotations.map((x, i) => (anns.has(i) ? { ...x, at: shift(x.at) } : x)),
+    groups: topo.groups?.map((g, i) => (groups.has(i) ? { ...g, x: g.x + dx, y: g.y + dy } : g)),
+  };
+}
+
+/* Resize a frame from its top-left corner; cable ends keep their relative spot on the frame. */
+export function resizeNode(topo: SiteTopology, id: string, w: number, h: number): SiteTopology {
+  const node = topo.nodes.find((n) => n.id === id);
+  if (!node || (node.w === w && node.h === h)) return topo;
+  const follow = (p: Point): [number, number] => {
+    const rx = node.w ? (p[0] - node.x) / node.w : 0;
+    const ry = node.h ? (p[1] - node.y) / node.h : 0;
+    return [Math.round(node.x + rx * w - p[0]), Math.round(node.y + ry * h - p[1])];
+  };
+  return {
+    ...topo,
+    nodes: topo.nodes.map((n) => (n.id === id ? { ...n, w, h } : n)),
+    links: topo.links.map((l) => {
+      let points = l.points;
+      if (l.a.node === id) points = shiftEnd(points, true, ...follow(points[0]));
+      if (l.b.node === id) points = shiftEnd(points, false, ...follow(points[points.length - 1]));
+      return points === l.points ? l : { ...l, points, labelAt: undefined };
     }),
   };
+}
+
+/*
+ * Visio-style segment drag. Returns the route to drag from and the index of the segment in it: an
+ * end segment gets a stub at the frame so the cable stays attached and orthogonal while it moves.
+ */
+export function prepareSegment(points: Point[], i: number): { points: Point[]; index: number } {
+  const pts = points.map((p) => [...p] as Point);
+  let index = i;
+  if (index === pts.length - 2 && pts.length > 1) pts.push([...pts[pts.length - 1]] as Point);
+  if (index === 0) {
+    pts.unshift([...pts[0]] as Point);
+    index = 1;
+  }
+  return { points: pts, index };
+}
+
+/* Move segment `index` across itself (along both axes when it is diagonal). */
+export function dragSegment(points: Point[], index: number, dx: number, dy: number): Point[] {
+  const [p, q] = [points[index], points[index + 1]];
+  const horizontal = p[1] === q[1];
+  const vertical = p[0] === q[0];
+  const mx = horizontal && !vertical ? 0 : dx;
+  const my = vertical && !horizontal ? 0 : dy;
+  return points.map((pt, k) => (k === index || k === index + 1 ? ([pt[0] + mx, pt[1] + my] as Point) : pt));
+}
+
+/* Drop repeated points and bends that no longer turn. */
+export function cleanRoute(points: Point[]): Point[] {
+  const out: Point[] = [];
+  for (const p of points) {
+    const last = out[out.length - 1];
+    if (last && last[0] === p[0] && last[1] === p[1]) continue;
+    const prev = out[out.length - 2];
+    if (prev && last && ((prev[0] === last[0] && last[0] === p[0]) || (prev[1] === last[1] && last[1] === p[1]))) out.pop();
+    out.push(p);
+  }
+  if (out.length === 1) out.push([...out[0]] as Point);
+  return out;
+}
+
+/* A new route for one cable (bends are lost; the drawing's interrupted mark goes to its middle). */
+export function rerouteLink(topo: SiteTopology, link: TopoLink): TopoLink {
+  const a = topo.nodes.find((n) => n.id === link.a.node);
+  const b = topo.nodes.find((n) => n.id === link.b.node);
+  if (!a || !b) return link;
+  const points = autoRoute(a, b);
+  return { ...link, points, labelAt: undefined, dotted: undefined, breaks: link.breaks?.length ? [midpoint(points)] : undefined };
+}
+
+export type AlignMode = "left" | "center" | "right" | "top" | "middle" | "bottom";
+
+/* Align devices to the first one selected, like Visio's Align command. */
+export function alignNodes(topo: SiteTopology, ids: string[], mode: AlignMode): SiteTopology {
+  const nodes = ids.map((id) => topo.nodes.find((n) => n.id === id)).filter((n): n is TopoNode => !!n);
+  if (nodes.length < 2) return topo;
+  const [ref] = nodes;
+  let next = topo;
+  for (const n of nodes.slice(1)) {
+    const dx =
+      mode === "left" ? ref.x - n.x : mode === "right" ? ref.x + ref.w - n.x - n.w : mode === "center" ? ref.x + ref.w / 2 - n.x - n.w / 2 : 0;
+    const dy =
+      mode === "top" ? ref.y - n.y : mode === "bottom" ? ref.y + ref.h - n.y - n.h : mode === "middle" ? ref.y + ref.h / 2 - n.y - n.h / 2 : 0;
+    next = moveSelection(next, [`n:${n.id}`], Math.round(dx), Math.round(dy));
+  }
+  return next;
+}
+
+/* Even spacing between the centres of three or more devices, keeping the outer two in place. */
+export function distributeNodes(topo: SiteTopology, ids: string[], axis: "x" | "y"): SiteTopology {
+  const nodes = ids.map((id) => topo.nodes.find((n) => n.id === id)).filter((n): n is TopoNode => !!n);
+  if (nodes.length < 3) return topo;
+  const c = (n: TopoNode) => (axis === "x" ? n.x + n.w / 2 : n.y + n.h / 2);
+  const sorted = [...nodes].sort((p, q) => c(p) - c(q));
+  const first = c(sorted[0]);
+  const step = (c(sorted[sorted.length - 1]) - first) / (sorted.length - 1);
+  let next = topo;
+  sorted.forEach((n, i) => {
+    const d = Math.round(first + i * step - c(n));
+    next = moveSelection(next, [`n:${n.id}`], axis === "x" ? d : 0, axis === "y" ? d : 0);
+  });
+  return next;
+}
+
+/* Remove a selection; removing a device removes its cables too. */
+export function deleteSelection(topo: SiteTopology, refs: Ref[]): SiteTopology {
+  const nodes = new Set(refsOf(refs, "n"));
+  const links = new Set(refsOf(refs, "l"));
+  const anns = new Set(refsOf(refs, "a").map(Number));
+  const groups = new Set(refsOf(refs, "g").map(Number));
+  return {
+    ...topo,
+    nodes: topo.nodes.filter((n) => !nodes.has(n.id)),
+    links: topo.links.filter((l) => !links.has(l.id) && !nodes.has(l.a.node) && !nodes.has(l.b.node)),
+    annotations: topo.annotations.filter((_, i) => !anns.has(i)),
+    groups: topo.groups?.filter((_, i) => !groups.has(i)),
+  };
+}
+
+export interface Clip {
+  nodes: TopoNode[];
+  links: TopoLink[];
+  annotations: SiteTopology["annotations"];
+  groups: NonNullable<SiteTopology["groups"]>;
+}
+
+/* Copy a selection, with the cables between the copied devices. */
+export function copySelection(topo: SiteTopology, refs: Ref[]): Clip {
+  const nodes = new Set(refsOf(refs, "n"));
+  const anns = new Set(refsOf(refs, "a").map(Number));
+  const groups = new Set(refsOf(refs, "g").map(Number));
+  return {
+    nodes: topo.nodes.filter((n) => nodes.has(n.id)),
+    links: topo.links.filter((l) => nodes.has(l.a.node) && nodes.has(l.b.node)),
+    annotations: topo.annotations.filter((_, i) => anns.has(i)),
+    groups: (topo.groups ?? []).filter((_, i) => groups.has(i)),
+  };
+}
+
+const prefixOf = (kind: NodeKind) => (kind === "ap" ? "AP" : kind === "passive" ? "PASS" : "SW");
+
+/* Paste a copy shifted by (dx, dy), with fresh ids; returns the drawing and what to select. */
+export function pasteClip(topo: SiteTopology, clip: Clip, dx: number, dy: number): { topo: SiteTopology; refs: Ref[] } {
+  const ids = new Map<string, string>();
+  const taken = topo.nodes.map((n) => n.id);
+  const nodes = clip.nodes.map((n) => {
+    const id = freeId(prefixOf(n.kind), taken);
+    taken.push(id);
+    ids.set(n.id, id);
+    // Hostnames and IPs belong to one device, so the copy starts without them.
+    return { ...n, id, hostname: undefined, ip: undefined, x: n.x + dx, y: n.y + dy };
+  });
+  const linkIds = topo.links.map((l) => l.id);
+  const shift = (p: Point): Point => [p[0] + dx, p[1] + dy];
+  const links = clip.links.map((l) => {
+    const id = freeId("L", linkIds);
+    linkIds.push(id);
+    return {
+      ...l,
+      id,
+      a: { ...l.a, node: ids.get(l.a.node)! },
+      b: { ...l.b, node: ids.get(l.b.node)! },
+      points: l.points.map(shift),
+      labelAt: l.labelAt && shift(l.labelAt),
+      breaks: l.breaks?.map(shift),
+    };
+  });
+  const annotations = clip.annotations.map((a) => ({ ...a, at: shift(a.at) }));
+  const groups = clip.groups.map((g) => ({ ...g, x: g.x + dx, y: g.y + dy }));
+  const next: SiteTopology = {
+    ...topo,
+    nodes: [...topo.nodes, ...nodes],
+    links: [...topo.links, ...links],
+    annotations: [...topo.annotations, ...annotations],
+    groups: [...(topo.groups ?? []), ...groups],
+  };
+  const refs = [
+    ...nodes.map((n) => `n:${n.id}`),
+    ...links.map((l) => `l:${l.id}`),
+    ...annotations.map((_, i) => `a:${topo.annotations.length + i}`),
+    ...groups.map((_, i) => `g:${(topo.groups ?? []).length + i}`),
+  ];
+  return { topo: next, refs };
+}
+
+/* Bounding box of a selection, for the selection frame and for framing it on screen. */
+export function boundsOf(topo: SiteTopology, refs: Ref[]): [number, number, number, number] | null {
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (const r of refs) {
+    const key = r.slice(2);
+    if (r.startsWith("n:")) {
+      const n = topo.nodes.find((x) => x.id === key);
+      if (n) xs.push(n.x, n.x + n.w), ys.push(n.y, n.y + n.h);
+    } else if (r.startsWith("l:")) {
+      const l = topo.links.find((x) => x.id === key);
+      for (const [x, y] of l?.points ?? []) xs.push(x), ys.push(y);
+    } else if (r.startsWith("a:")) {
+      const a = topo.annotations[Number(key)];
+      if (a) xs.push(a.at[0] - 40, a.at[0] + 40), ys.push(a.at[1] - 8, a.at[1] + 2);
+    } else if (r.startsWith("g:")) {
+      const g = topo.groups?.[Number(key)];
+      if (g) xs.push(g.x, g.x + g.w), ys.push(g.y, g.y + g.h);
+    }
+  }
+  if (!xs.length) return null;
+  return [Math.min(...xs), Math.min(...ys), Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)];
 }
 
 /* Middle of a polyline, where a "cable interrupted" cross goes. */
@@ -120,15 +344,11 @@ export function freeId(prefix: string, taken: string[]): string {
   }
 }
 
-export function newNode(topo: SiteTopology, kind: NodeKind): TopoNode {
+/* A new device centred on (cx, cy), on the drawing's 2-unit grid. */
+export function newNode(topo: SiteTopology, kind: NodeKind, cx: number, cy: number): TopoNode {
   const [w, h] = NODE_SIZE[kind];
-  const [vx, vy, vw, vh] = topo.view;
-  // Next to the others, in the free strip under the drawing.
-  const bottom = Math.max(vy + 40, ...topo.nodes.map((n) => n.y + n.h));
-  const x = Math.round(vx + vw / 2 - w / 2);
-  const y = Math.round(Math.min(bottom + 40, vy + vh - h - 10));
-  const prefix = kind === "ap" ? "AP" : kind === "passive" ? "PASS" : "SW";
-  return { id: freeId(prefix, topo.nodes.map((n) => n.id)), kind, x, y, w, h };
+  const snap = (v: number) => Math.round(v / 2) * 2;
+  return { id: freeId(prefixOf(kind), topo.nodes.map((n) => n.id)), kind, x: snap(cx - w / 2), y: snap(cy - h / 2), w, h };
 }
 
 export function emptyTopology(code: string, name: string, city: string): SiteTopology {

@@ -5331,79 +5331,537 @@ fieldset .hint {
   margin-right: auto;
 }
 
-/* Topology editor */
-.topo-editor-head {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-}
-
-.topo-editor-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  gap: 1rem;
-  align-items: start;
-}
-
-.topo-editor-canvas {
-  padding: 0.8rem;
-}
-
-.topo-svg.editing .topo-node {
-  cursor: grab;
-}
-
-.topo-svg.editing .topo-node:active {
-  cursor: grabbing;
-}
-
-.topo-editor-side {
+/* Topology editor (Visio-style) */
+.ve-page {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
-  padding: 0.8rem;
-  position: sticky;
-  top: 76px;
-  max-height: calc(100vh - 92px);
-  overflow: auto;
+  height: calc(100vh - 62px);
+  min-height: 560px;
+  padding: 0.9rem 1.2rem 1rem;
 }
 
-.topo-editor-tabs {
+.ve-head h1 {
+  margin-bottom: 0;
+}
+
+.ve-dirty {
+  font-size: 0.72rem;
+}
+
+.ve-ribbon {
   display: flex;
-  padding: 3px;
-  border: 1px solid var(--line-2);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--line);
   border-radius: 6px;
+  background: var(--panel);
 }
 
-.topo-editor-tabs button {
-  flex: 1;
-  padding: 0.35rem;
-  border: 0;
+.ve-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 0.45rem;
+  border-right: 1px solid var(--line);
+}
+
+.ve-group:last-child {
+  border-right: 0;
+}
+
+.ve-group-label {
+  margin: 0 0.35rem 0 0.2rem;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ve-tool {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid transparent;
   border-radius: 4px;
   background: transparent;
   color: var(--text-2);
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
   cursor: pointer;
 }
 
-.topo-editor-tabs button.active {
+.ve-tool:hover:not(:disabled) {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.ve-tool.active {
+  border-color: rgba(46, 230, 160, 0.4);
   background: rgba(46, 230, 160, 0.12);
   color: var(--ok);
 }
 
-.topo-editor-add,
-.topo-editor-row {
+.ve-tool:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.ve-medium {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  align-items: center;
+  gap: 0.35rem;
+  height: 26px;
+  padding: 0 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  cursor: pointer;
+}
+
+.ve-medium i {
+  width: 14px;
+  height: 0;
+  border-top: 2px solid #4f8dff;
+}
+
+.ve-medium.mm i {
+  border-color: var(--warn);
+}
+
+.ve-medium.utp i {
+  border-color: #8d9aa1;
+}
+
+.ve-medium.wireless i {
+  border-top-style: dashed;
+  border-color: var(--ok);
+}
+
+.ve-medium.active {
+  border-color: var(--line-2);
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.ve-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 136px minmax(0, 1fr) 330px;
+  gap: 0.7rem;
+}
+
+.ve-stencil,
+.ve-props {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-height: 0;
+  padding: 0.7rem;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.ve-panel-title {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ok);
+}
+
+.ve-stencil-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.45rem 0.3rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--bg-2);
+  color: var(--text-2);
+  font-size: 0.68rem;
+  cursor: grab;
+}
+
+.ve-stencil-item:hover {
+  border-color: rgba(46, 230, 160, 0.45);
+  color: var(--text);
+}
+
+.ve-stencil-item:active {
+  cursor: grabbing;
+}
+
+.ve-stencil-icon {
+  width: 48px;
+  height: 32px;
+}
+
+.ve-stencil-icon .frame {
+  fill: #12191c;
+  stroke: #4c5a61;
+  stroke-width: 1.2;
+}
+
+.ve-stencil-icon.core .frame {
+  stroke: var(--ok-dim);
+  stroke-width: 1.6;
+}
+
+.ve-stencil-icon .frame.passive {
+  stroke-dasharray: 3 2;
+}
+
+.ve-stencil-icon .face {
+  fill: #1f282d;
+  stroke: #3b474d;
+  stroke-width: 0.6;
+}
+
+.ve-stencil-icon .area {
+  fill: none;
+  stroke: var(--line-2);
+  stroke-dasharray: 3 3;
+}
+
+.ve-stencil-icon .label {
+  fill: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.ve-keys {
+  margin-top: auto;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.64rem;
+  color: var(--muted);
+}
+
+.ve-keys p {
+  margin: 0.3rem 0 0;
+  line-height: 1.35;
+}
+
+kbd {
+  padding: 0 0.25rem;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: var(--bg-2);
+  font-family: var(--mono);
+  font-size: 0.9em;
+  color: var(--text-2);
+}
+
+.ve-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #0a0d0f;
+}
+
+.ve-canvas {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.ve-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.ve-svg.tool-pan,
+.ve-svg.dragging-pan {
+  cursor: grab;
+}
+
+.ve-svg.dragging-pan {
+  cursor: grabbing;
+}
+
+.ve-svg.tool-connect,
+.ve-svg.dragging-connect,
+.ve-svg.dragging-end {
+  cursor: crosshair;
+}
+
+.ve-svg.tool-select .topo-node {
+  cursor: move;
+}
+
+.ve-svg.dragging-move .topo-node {
+  cursor: grabbing;
+}
+
+.ve-svg .topo-link-flow {
+  display: none;
+}
+
+.ve-svg .topo-link.active .topo-link-line {
+  stroke-width: 2.6;
+}
+
+.ve-bg {
+  fill: transparent;
+}
+
+.ve-grid-minor,
+.ve-grid-major {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+
+.ve-grid-minor {
+  stroke: rgba(46, 230, 160, 0.035);
+}
+
+.ve-grid-major {
+  stroke: rgba(46, 230, 160, 0.08);
+}
+
+.ve-area {
+  cursor: move;
+}
+
+.topo-group .ve-area-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 10;
+  pointer-events: stroke;
+}
+
+.ve-svg .topo-annotation {
+  cursor: move;
+}
+
+.ve-sel {
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: calc(var(--hs) * 1.2);
+  stroke-dasharray: calc(var(--hs) * 4) calc(var(--hs) * 3);
+  pointer-events: none;
+}
+
+.ve-handle {
+  fill: #0a0d0f;
+  stroke: var(--ok);
+  stroke-width: calc(var(--hs) * 1.4);
+}
+
+.ve-handle.resize {
+  fill: var(--ok);
+  cursor: nwse-resize;
+}
+
+.ve-handle.seg {
+  fill: #4f8dff;
+  stroke: #cfe0ff;
+}
+
+.ve-handle.seg.ns {
+  cursor: ns-resize;
+}
+
+.ve-handle.seg.ew {
+  cursor: ew-resize;
+}
+
+.ve-handle.seg.move,
+.ve-handle.label {
+  cursor: move;
+}
+
+.ve-handle.end {
+  fill: var(--ok);
+  cursor: crosshair;
+}
+
+.ve-handle.label {
+  fill: var(--warn);
+  stroke: #0a0d0f;
+}
+
+.ve-port {
+  cursor: crosshair;
+}
+
+.ve-port path {
+  stroke: #4f8dff;
+  stroke-width: calc(var(--hs) * 1.6);
+  stroke-linecap: round;
+}
+
+.ve-port-hit {
+  fill: rgba(79, 141, 255, 0.12);
+  stroke: none;
+}
+
+.ve-port:hover .ve-port-hit {
+  fill: rgba(79, 141, 255, 0.35);
+}
+
+.ve-target {
+  fill: rgba(46, 230, 160, 0.08);
+  stroke: var(--ok);
+  stroke-width: calc(var(--hs) * 2);
+  pointer-events: none;
+}
+
+.ve-wire {
+  fill: none;
+  stroke: var(--ok);
+  stroke-width: calc(var(--hs) * 2);
+  stroke-dasharray: calc(var(--hs) * 6) calc(var(--hs) * 4);
+  pointer-events: none;
+}
+
+.ve-wire.sm {
+  stroke: #4f8dff;
+}
+
+.ve-wire.mm {
+  stroke: var(--warn);
+}
+
+.ve-wire.utp {
+  stroke: #8d9aa1;
+}
+
+.ve-guide {
+  stroke: #ff4fd8;
+  stroke-width: var(--hs);
+  pointer-events: none;
+}
+
+.ve-marquee {
+  fill: rgba(79, 141, 255, 0.08);
+  stroke: #4f8dff;
+  stroke-width: var(--hs);
+  stroke-dasharray: calc(var(--hs) * 4) calc(var(--hs) * 3);
+  pointer-events: none;
+}
+
+.ve-empty {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  padding: 0.8rem 1.1rem;
+  border: 1px dashed var(--line-2);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+
+.ve-statusbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.2rem 0.4rem 0.2rem 0.8rem;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+  font-size: 0.7rem;
+  color: var(--text-2);
+}
+
+.ve-hint {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ve-zoom {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ve-zoom .mono {
+  min-width: 3.2rem;
+  text-align: center;
+}
+
+.ve-zoom .ve-tool {
+  width: 24px;
+  height: 24px;
+}
+
+.ve-node-links {
   grid-column: 1 / -1;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.ve-node-links:empty {
+  display: none;
+}
+
+.ve-node-links button {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.3rem 0.55rem;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font-size: 0.72rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ve-node-links li:last-child button {
+  border-bottom: 0;
+}
+
+.ve-node-links button:hover {
+  background: rgba(46, 230, 160, 0.08);
+}
+
+.ve-list-empty {
+  padding: 0.5rem 0.6rem;
+  font-size: 0.72rem;
+}
+
+.ve-multi p {
+  margin: 0.3rem 0 0;
+  font-size: 0.74rem;
+}
+
+.ve-delete {
+  align-self: flex-start;
 }
 
 .topo-editor-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: 220px;
+  max-height: 260px;
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -5424,13 +5882,8 @@ fieldset .hint {
   cursor: pointer;
 }
 
-.topo-editor-list button:hover,
-.topo-editor-list button.active {
+.topo-editor-list button:hover {
   background: rgba(46, 230, 160, 0.08);
-}
-
-.topo-editor-list button.active {
-  color: var(--ok);
 }
 
 .topo-editor-form .span {
@@ -5445,17 +5898,25 @@ fieldset .hint {
 }
 
 @media (max-width: 1100px) {
-  .topo-editor-main {
+  .ve-page {
+    height: auto;
+  }
+
+  .ve-body {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .topo-editor-head {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .ve-stencil {
+    flex-direction: row;
+    flex-wrap: wrap;
   }
 
-  .topo-editor-side {
-    position: static;
-    max-height: none;
+  .ve-keys {
+    display: none;
+  }
+
+  .ve-stage {
+    height: 70vh;
   }
 }
 

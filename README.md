@@ -86,7 +86,13 @@ para adicionar e o **lápis** para editar o que está na tela:
   alturas, câmeras, climatização, acesso, coordenadas). O último CPD ou rack de um site não pode
   ser removido;
 - Topologia: nova topologia para um site que ainda não tem e edição da atual
-  (`/topologia/editar?site=<código>`), com tabelas de ativos e enlaces e arrastar no desenho;
+  (`/topologia/editar?site=<código>`) num editor no estilo do Visio: paleta de formas (switch
+  central, switch de acesso, AP, ponto passivo, texto e área) para arrastar ao desenho; enlaces
+  criados puxando de um dos × de um ativo até outro (ou com a ferramenta Conector), no meio
+  escolhido na barra; cabos dobrados arrastando os segmentos e religados arrastando as pontas;
+  guias de alinhamento, alinhar e distribuir, redimensionar pelo canto, seleção por área, zoom
+  (Ctrl+roda), mover a vista (espaço ou ferramenta Mão), copiar, colar, duplicar, desfazer e refazer.
+  Os dados de cada forma (hostname, IP, modelo, portas, conectores, fibras) ficam no painel à direita;
 - Servidores: novo cluster para um site sem cluster e edição do atual (hosts a partir de modelos,
   CPU e memória por socket, datastores e storage);
 - Internet: novo link no site e edição do link selecionado.
