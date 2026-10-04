@@ -22,22 +22,26 @@ const fit = (text: string, charWidth: number, max: number) =>
 
 const path = (points: Point[]) => points.map(([x, y], i) => `${i ? "L" : "M"}${x} ${y}`).join(" ");
 
-/* Port name next to where the cable meets the frame: rotated along vertical cables, like the drawing. */
-function PortLabel({ end, from, to }: { end: Endpoint; from: Point; to: Point }) {
+/*
+ * Port name next to where the cable meets the frame: rotated along vertical cables, like the drawing,
+ * and set beside the line rather than on it. The editor can drag it elsewhere (labelOffset).
+ */
+function PortLabel({ end, which, from, to }: { end: Endpoint; which: "a" | "b"; from: Point; to: Point }) {
   if (!end.port) return null;
   const vertical = from[0] === to[0];
   const dir = vertical ? Math.sign(to[1] - from[1]) : Math.sign(to[0] - from[0]);
+  const [ox, oy] = end.labelOffset ?? [0, 0];
   if (vertical) {
-    const x = from[0] + 4;
-    const y = from[1] + dir * 5;
+    const x = from[0] + 2.5 + ox;
+    const y = from[1] + dir * 5 + oy;
     return (
-      <text className="topo-port" x={x} y={y} transform={`rotate(90 ${x} ${y})`} textAnchor={dir > 0 ? "start" : "end"} dominantBaseline="hanging">
+      <text className="topo-port" data-port={which} x={x} y={y} transform={`rotate(90 ${x} ${y})`} textAnchor={dir > 0 ? "start" : "end"}>
         {end.port}
       </text>
     );
   }
   return (
-    <text className="topo-port" x={from[0] + dir * 5} y={from[1] - 3} textAnchor={dir > 0 ? "start" : "end"}>
+    <text className="topo-port" data-port={which} x={from[0] + dir * 5 + ox} y={from[1] - 3.5 + oy} textAnchor={dir > 0 ? "start" : "end"}>
       {end.port}
     </text>
   );
@@ -93,8 +97,8 @@ export function LinkShape({ link, state, active, onSelect, onHover }: { link: To
       {state !== "down" && link.medium !== "wireless" && <path className="topo-link-flow" d={d} />}
       <Connector end={link.a} at={pts[0]} toward={pts[1]} />
       <Connector end={link.b} at={pts[pts.length - 1]} toward={pts[pts.length - 2]} />
-      <PortLabel end={link.a} from={pts[0]} to={pts[1]} />
-      <PortLabel end={link.b} from={pts[pts.length - 1]} to={pts[pts.length - 2]} />
+      <PortLabel end={link.a} which="a" from={pts[0]} to={pts[1]} />
+      <PortLabel end={link.b} which="b" from={pts[pts.length - 1]} to={pts[pts.length - 2]} />
       {link.fibers && (
         <text className="topo-fibers" x={fibersAt(link)[0]} y={fibersAt(link)[1]} textAnchor="middle">
           {link.fibers}FO

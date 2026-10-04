@@ -34,7 +34,8 @@ interface Props {
   grid: boolean;
   guides: boolean;
   onDropShape: (shape: Shape, at: Point) => void;
-  onEdit: (ref: Ref) => void;
+  /* Double-click: edit the shape's data; `field` names the input to focus (e.g. "port-a"). */
+  onEdit: (ref: Ref, field?: string) => void;
   onZoom: (percent: number) => void;
   apiRef: React.RefObject<CanvasApi | null>;
 }
@@ -45,6 +46,7 @@ type Drag =
   | { kind: "segment"; start: Point; base: SiteTopology; id: string; points: Point[]; index: number; moved: boolean }
   | { kind: "end"; id: string; end: "a" | "b"; fixed: Point; other: string }
   | { kind: "label"; start: Point; base: SiteTopology; id: string; origin: Point }
+  | { kind: "port"; start: Point; base: SiteTopology; id: string; end: "a" | "b"; origin: Point }
   | { kind: "connect"; from: string; origin: Point }
   | { kind: "pan"; client: [number, number]; cam: Cam }
   | { kind: "marquee"; start: Point; keep: Ref[] }
@@ -307,6 +309,12 @@ export function EditorCanvas(props: Props) {
       case "label":
         preview(replaceLink(d.base, d.id, (l) => ({ ...l, labelAt: [snap2(d.origin[0] + p[0] - d.start[0]), snap2(d.origin[1] + p[1] - d.start[1])] })));
         break;
+      case "port": {
+        // The text is rotated on vertical cables, but the offset is in drawing units either way.
+        const off: Point = [Math.round(d.origin[0] + p[0] - d.start[0]), Math.round(d.origin[1] + p[1] - d.start[1])];
+        preview(replaceLink(d.base, d.id, (l) => ({ ...l, [d.end]: { ...l[d.end], labelOffset: off } })));
+        break;
+      }
       case "end":
       case "connect":
         setCursor(p);
@@ -344,6 +352,7 @@ export function EditorCanvas(props: Props) {
       case "resize":
       case "area":
       case "label":
+      case "port":
         commit();
         break;
       case "segment":
@@ -439,6 +448,14 @@ export function EditorCanvas(props: Props) {
     if (additive) sel = selection.includes(ref) ? selection.filter((r) => r !== ref) : [...selection, ref];
     else if (!selection.includes(ref)) sel = [ref];
     props.onSelect(sel);
+    const port = el.closest("[data-port]")?.getAttribute("data-port") as "a" | "b" | null;
+    if (ref.startsWith("l:") && port && !additive) {
+      // Port names can be dragged off the line.
+      const link = topo.links.find((l) => l.id === ref.slice(2));
+      props.onSelect([ref]);
+      if (link) begin({ kind: "port", start: p, base: topo, id: link.id, end: port, origin: link[port].labelOffset ?? [0, 0] });
+      return;
+    }
     if (ref.startsWith("l:")) {
       // Dragging a cable bends it, segment by segment.
       const link = topo.links.find((l) => l.id === ref.slice(2));
@@ -483,8 +500,10 @@ export function EditorCanvas(props: Props) {
         onPointerMove={onPointerMove}
         onPointerLeave={() => !drag.current && setHover(null)}
         onDoubleClick={(e) => {
-          const ref = (e.target as Element).closest("[data-ref]")?.getAttribute("data-ref");
-          if (ref) props.onEdit(ref);
+          const el = e.target as Element;
+          const ref = el.closest("[data-ref]")?.getAttribute("data-ref");
+          const port = el.closest("[data-port]")?.getAttribute("data-port");
+          if (ref) props.onEdit(ref, port ? `port-${port}` : undefined);
         }}
         onDragOver={(e) => {
           if (e.dataTransfer.types.includes(SHAPE_MIME)) {

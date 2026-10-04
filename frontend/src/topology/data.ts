@@ -33,6 +33,8 @@ export interface Endpoint {
   port?: string;
   /* Cisco SFP (square), non-Cisco fibre converter (circle) or PoE injector (arrow). */
   connector?: "sfp" | "converter" | "injector";
+  /* Where the port name was dragged to, relative to its default spot beside the cable. */
+  labelOffset?: Point;
 }
 
 export interface TopoLink {

@@ -4084,6 +4084,11 @@ button.port-sq:hover,
   fill: var(--text-2);
   font-family: var(--mono);
   font-size: calc(6.4px * var(--ts, 1));
+  /* A dark halo keeps the name readable where it crosses another cable. */
+  paint-order: stroke;
+  stroke: #0a0d0f;
+  stroke-width: 2px;
+  stroke-linejoin: round;
 }
 
 .topo-fibers {
@@ -5649,8 +5654,13 @@ kbd {
   pointer-events: stroke;
 }
 
-.ve-svg .topo-annotation {
+.ve-svg .topo-annotation,
+.ve-svg .topo-port {
   cursor: move;
+}
+
+.ve-svg .topo-link.active .topo-port {
+  fill: var(--ok);
 }
 
 .ve-sel {

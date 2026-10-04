@@ -145,6 +145,7 @@ function TopologyEditor({ initial, freeSites, onSaved }: EditorProps) {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [focusToken, setFocusToken] = useState(0);
+  const focusField = useRef<string | undefined>(undefined);
   const canvas = useRef<CanvasApi | null>(null);
   const clip = useRef<Clip | null>(null);
   const props = useRef<HTMLElement>(null);
@@ -226,7 +227,11 @@ function TopologyEditor({ initial, freeSites, onSaved }: EditorProps) {
   // Double-click on a shape, or a new shape: jump to its first field.
   useEffect(() => {
     if (!focusToken) return;
-    const el = props.current?.querySelector<HTMLInputElement>("fieldset input:not([type=checkbox]), fieldset textarea");
+    const field = focusField.current;
+    focusField.current = undefined;
+    const el = props.current?.querySelector<HTMLInputElement>(
+      field ? `[data-field="${field}"]` : "fieldset input:not([type=checkbox]), fieldset textarea",
+    );
     el?.focus();
     el?.select();
   }, [focusToken]);
@@ -506,7 +511,8 @@ function TopologyEditor({ initial, freeSites, onSaved }: EditorProps) {
             grid={grid}
             guides={guides}
             onDropShape={dropShape}
-            onEdit={(ref) => {
+            onEdit={(ref, field) => {
+              focusField.current = field;
               setSelection([ref]);
               setFocusToken((k) => k + 1);
             }}
@@ -691,6 +697,7 @@ function TopologyEditor({ initial, freeSites, onSaved }: EditorProps) {
                   <label>
                     Porta
                     <input
+                      data-field={`port-${end}`}
                       value={link[end].port ?? ""}
                       onChange={(e) => setLink((l) => ({ ...l, [end]: { ...l[end], port: e.target.value || undefined } }), true)}
                       onBlur={done}
@@ -751,7 +758,19 @@ function TopologyEditor({ initial, freeSites, onSaved }: EditorProps) {
                 <input type="checkbox" checked={!!link.breaks?.length} onChange={(e) => setLink({ breaks: e.target.checked ? [midpoint(link.points)] : undefined })} />
                 Enlace interrompido
               </label>
-              <p className="hint">Arraste os quadrados do cabo para dobrá-lo e as bolinhas das pontas até outro ativo para religá-lo.</p>
+              <p className="hint">
+                Arraste os quadrados do cabo para dobrá-lo e as bolinhas das pontas até outro ativo para religá-lo. O nome da porta
+                pode ser arrastado para longe da linha; dois cliques nele editam o texto.
+              </p>
+              {(link.a.labelOffset || link.b.labelOffset) && (
+                <button
+                  type="button"
+                  className="btn ghost small span"
+                  onClick={() => setLink((l) => ({ ...l, a: { ...l.a, labelOffset: undefined }, b: { ...l.b, labelOffset: undefined } }))}
+                >
+                  Voltar as portas à posição padrão
+                </button>
+              )}
             </fieldset>
           )}
 
