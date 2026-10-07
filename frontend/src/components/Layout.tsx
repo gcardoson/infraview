@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { Clock } from "./Clock";
+import { ThemeToggle } from "./ThemeToggle";
 
 const LAYERS = [
   { to: "/explorer", label: "Explorer", ready: true },
@@ -38,6 +39,7 @@ export function Layout() {
             VLANs
           </NavLink>
         </nav>
+        <ThemeToggle />
         <Clock />
       </header>
       <Outlet />

@@ -1,4 +1,5 @@
 import L from "leaflet";
+import type { Theme } from "../theme";
 import type { GeometryCollection, Topology } from "topojson-specification";
 import southAmericaUrl from "sane-topojson/dist/south-america_50m.json?url";
 
@@ -18,8 +19,10 @@ export interface Basemap {
   subdomains?: string;
   /* Optional transparent layer with place names drawn over the base. */
   labels?: string;
-  /* OpenStreetMap only has a light style; a CSS filter darkens it to match the interface. */
+  /* OpenStreetMap only has a light style; a CSS filter darkens it to match the dark interface. */
   darken?: boolean;
+  /* The same service's light style, used with the light theme. */
+  light?: { label: string; url: string; labels?: string };
 }
 
 const OSM = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
@@ -32,6 +35,11 @@ export const BASEMAPS: Basemap[] = [
     label: "Escuro (Esri)",
     url: `${ESRI_URL}/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}`,
     labels: `${ESRI_URL}/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}`,
+    light: {
+      label: "Claro (Esri)",
+      url: `${ESRI_URL}/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}`,
+      labels: `${ESRI_URL}/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}`,
+    },
     maxZoom: 16,
     attribution: `${ESRI} &mdash; Esri, HERE, Garmin, ${OSM}`,
   },
@@ -72,6 +80,9 @@ export function saveBasemap(id: string) {
   }
 }
 
+/* The basemap as the current theme shows it. */
+export const themed = (b: Basemap, theme: Theme): Basemap => (theme === "light" && b.light ? { ...b, ...b.light } : b);
+
 export function tileLayer(b: Basemap) {
   return L.tileLayer(b.url, {
     maxZoom: 19,
@@ -97,13 +108,14 @@ export async function offlineLayer(): Promise<L.LayerGroup> {
     import("topojson-client"),
     fetch(southAmericaUrl).then((r) => r.json() as Promise<Topology<Record<Layers, GeometryCollection>>>),
   ]);
+  // Colours come from the stylesheet (.offline-*), so they follow the theme.
   const layer = (name: Layers, style: L.PathOptions) =>
-    L.geoJSON(feature(data, data.objects[name]), { interactive: false, pane: "offline", style: () => style });
+    L.geoJSON(feature(data, data.objects[name]), { interactive: false, pane: "offline", style: () => ({ ...style, className: `offline-${name}` }) });
   const group = L.layerGroup([
-    layer("countries", { color: "#26323a", weight: 0.9, fillColor: "#10171b", fillOpacity: 1 }),
-    layer("subunits", { color: "#24463d", weight: 0.8, fillColor: "#121c1c", fillOpacity: 1 }),
-    layer("lakes", { stroke: false, fillColor: "#0a1116", fillOpacity: 1 }),
-    layer("rivers", { color: "#1b3140", weight: 0.9, fill: false }),
+    layer("countries", { weight: 0.9, fillOpacity: 1 }),
+    layer("subunits", { weight: 0.8, fillOpacity: 1 }),
+    layer("lakes", { stroke: false, fillOpacity: 1 }),
+    layer("rivers", { weight: 0.9, fill: false }),
   ]);
   // State codes at each state's centre, as a light reference when there are no tiles.
   L.geoJSON(feature(data, data.objects.subunits)).eachLayer((l) => {
