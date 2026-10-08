@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { type InternetLink, ROLE_LABEL, api } from "../api";
 import { useResource } from "../components/useResource";
+import { EditActions } from "../components/EditActions";
+import { PlantTabs } from "../components/PlantTabs";
 import { LinkForm } from "./LinkForm";
-import { type LinkHealth, type LogEntry, useWanSimulation } from "./simulation";
+import { HA_LABEL, type LinkHealth, type LogEntry, useWanSimulation } from "./simulation";
 import { Sparkline } from "./Sparkline";
 import { HEALTH_COLOR, Topology } from "./Topology";
 
@@ -66,7 +68,7 @@ export function WanPage() {
         .sort((a, b) => ["primary", "secondary", "backup"].indexOf(a.role) - ["primary", "secondary", "backup"].indexOf(b.role)),
     [links.items, siteId],
   );
-  const { telemetry, log } = useWanSimulation(siteLinks);
+  const { telemetry, ha, log } = useWanSimulation(siteLinks);
   const selected = siteLinks.find((l) => l.id === selectedId) ?? null;
 
   const siteRef = useRef(siteId);
@@ -82,7 +84,8 @@ export function WanPage() {
         Math.max(1, active.flatMap((l) => telemetry.get(l.id)?.availability ?? []).length)) *
       100
     : 0;
-  const incidents = siteLinks.filter((l) => ["down", "degraded"].includes(health(l))).length;
+  const incidents =
+    siteLinks.filter((l) => ["down", "degraded"].includes(health(l))).length + (siteLinks.length && ha.state === "lost" ? 1 : 0);
   const capacity = siteLinks.reduce((sum, l) => sum + (l.bandwidth_mbps ?? 0), 0);
   const historyLength = Math.max(0, ...siteLinks.map((l) => telemetry.get(l.id)?.history.length ?? 0));
   const aggregate = Array.from({ length: historyLength }, (_, i) =>
@@ -101,26 +104,23 @@ export function WanPage() {
     <div className="wan">
       <div className="page-head">
         <div>
-          <div className="eyebrow">Layer 4</div>
-          <h1>Rede WAN</h1>
+          <div className="eyebrow">Internet</div>
+          <h1>Links de internet</h1>
         </div>
-        <label className="site-picker">
-          <span>Site</span>
-          <select
-            value={siteId ?? ""}
-            onChange={(e) => setParams({ site: e.target.value })}
-            disabled={!sites.items.length}
-          >
-            {sites.items.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.code} · {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <PlantTabs
+          plants={sites.items.map((s) => ({ key: String(s.id), code: s.code, name: s.name }))}
+          value={siteId === null ? null : String(siteId)}
+          onChange={(id) => setParams({ site: id })}
+        />
         <span className="badge sim" title="Status, tráfego e log são fictícios até a integração com LibreNMS e PRTG">
           Telemetria simulada
         </span>
+        <EditActions
+          addLabel={site ? `Novo link em ${site.code}` : "Novo link"}
+          onAdd={sites.items.length ? () => setEditing("new") : undefined}
+          editLabel={selected ? `Editar o link ${selected.provider}` : "Selecione um link na topologia para editar"}
+          onEdit={selected ? () => setEditing(selected) : undefined}
+        />
       </div>
 
       {(sites.error || links.error) && <div className="banner error">Erro ao carregar dados: {sites.error ?? links.error}</div>}
@@ -136,6 +136,15 @@ export function WanPage() {
               <span className="kpi-label">Incidentes</span>
               <span className={`kpi-value ${incidents ? "crit" : ""}`}>{String(incidents).padStart(2, "0")}</span>
             </div>
+            {siteLinks.length > 0 && (
+              <div className={`kpi-ha ha-${ha.state}`} title="Par VMware VeloCloud Edge 620 em alta disponibilidade (simulado)">
+                <span className="kpi-label">SD-WAN Edge · HA</span>
+                <span className="kpi-ha-value">
+                  <i />
+                  {HA_LABEL[ha.state]} · #{ha.active} ativo
+                </span>
+              </div>
+            )}
           </section>
 
           <section className="panel grow">
@@ -174,6 +183,55 @@ export function WanPage() {
             </button>
             {!sites.items.length && !sites.loading && <p className="muted empty">Cadastre um site primeiro, na aba Sites.</p>}
           </section>
+          <section className="panel">
+            <div className="panel-title">
+              Tráfego agregado <span className="muted">de {mbps(capacity)}</span>
+            </div>
+            <Sparkline values={aggregate} max={capacity} format={mbps} label="Tráfego agregado do site" />
+          </section>
+
+          <section className="panel">
+            <div className="panel-title">Latência por link</div>
+            <ul className="bars">
+              {siteLinks.map((link) => {
+                const t = telemetry.get(link.id);
+                const h = health(link);
+                const value = t && h !== "down" && h !== "standby" ? t.latencyMs : null;
+                return (
+                  <li key={link.id} title={`${link.provider}: ${value === null ? HEALTH_LABEL[h] : `${value.toFixed(0)} ms`}`}>
+                    <span className="bar-label">{link.provider}</span>
+                    <span className="bar-track">
+                      <span style={{ width: `${Math.min(100, ((value ?? 0) / 150) * 100)}%`, background: HEALTH_COLOR[h] }} />
+                    </span>
+                    <span className="bar-value mono">{value === null ? HEALTH_LABEL[h] : `${value.toFixed(0)} ms`}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+
+          <section className="panel">
+            <div className="panel-title">Disponibilidade 24h</div>
+            <div className="heatmap">
+              {siteLinks.map((link) => (
+                <div key={link.id} className="heat-row">
+                  <span className="heat-label">{link.provider}</span>
+                  <span className="heat-cells">
+                    {(telemetry.get(link.id)?.availability ?? []).map((v, i) => (
+                      <span
+                        key={i}
+                        className={`heat-cell ${v === 1 ? "ok" : v === 0 ? "crit" : "warn"}`}
+                        title={`${link.provider} · ${23 - i === 0 ? "hora atual" : `${23 - i}h atrás`}: ${v === 1 ? "ok" : v === 0 ? "fora" : "degradado"}`}
+                      />
+                    ))}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="heat-legend muted">
+              <span className="heat-cell ok" /> ok <span className="heat-cell warn" /> degradado <span className="heat-cell crit" /> fora
+            </div>
+          </section>
         </aside>
 
         <main className="col center">
@@ -189,7 +247,7 @@ export function WanPage() {
               </span>
             </div>
             {siteLinks.length ? (
-              <Topology links={siteLinks} telemetry={telemetry} selectedId={selectedId} onSelect={setSelectedId} />
+              <Topology links={siteLinks} telemetry={telemetry} ha={ha} selectedId={selectedId} onSelect={setSelectedId} />
             ) : (
               <div className="topo-empty muted">Cadastre links para ver a topologia.</div>
             )}
@@ -256,37 +314,10 @@ export function WanPage() {
             </section>
           )}
 
-          <LogTerminal entries={log} />
         </main>
 
-        <aside className="col">
-          <section className="panel">
-            <div className="panel-title">
-              Tráfego agregado <span className="muted">de {mbps(capacity)}</span>
-            </div>
-            <Sparkline values={aggregate} max={capacity} format={mbps} label="Tráfego agregado do site" />
-          </section>
-
-          <section className="panel">
-            <div className="panel-title">Latência por link</div>
-            <ul className="bars">
-              {siteLinks.map((link) => {
-                const t = telemetry.get(link.id);
-                const h = health(link);
-                const value = t && h !== "down" && h !== "standby" ? t.latencyMs : null;
-                return (
-                  <li key={link.id} title={`${link.provider}: ${value === null ? HEALTH_LABEL[h] : `${value.toFixed(0)} ms`}`}>
-                    <span className="bar-label">{link.provider}</span>
-                    <span className="bar-track">
-                      <span style={{ width: `${Math.min(100, ((value ?? 0) / 150) * 100)}%`, background: HEALTH_COLOR[h] }} />
-                    </span>
-                    <span className="bar-value mono">{value === null ? HEALTH_LABEL[h] : `${value.toFixed(0)} ms`}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-
+        <aside className="col wan-side">
+          <LogTerminal entries={log} />
           <section className="panel">
             <div className="panel-title">Alertas recentes</div>
             {alerts.length ? (
@@ -308,28 +339,6 @@ export function WanPage() {
             )}
           </section>
 
-          <section className="panel">
-            <div className="panel-title">Disponibilidade 24h</div>
-            <div className="heatmap">
-              {siteLinks.map((link) => (
-                <div key={link.id} className="heat-row">
-                  <span className="heat-label">{link.provider}</span>
-                  <span className="heat-cells">
-                    {(telemetry.get(link.id)?.availability ?? []).map((v, i) => (
-                      <span
-                        key={i}
-                        className={`heat-cell ${v === 1 ? "ok" : v === 0 ? "crit" : "warn"}`}
-                        title={`${link.provider} · ${23 - i === 0 ? "hora atual" : `${23 - i}h atrás`}: ${v === 1 ? "ok" : v === 0 ? "fora" : "degradado"}`}
-                      />
-                    ))}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="heat-legend muted">
-              <span className="heat-cell ok" /> ok <span className="heat-cell warn" /> degradado <span className="heat-cell crit" /> fora
-            </div>
-          </section>
         </aside>
       </div>
 

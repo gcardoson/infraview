@@ -1,8 +1,10 @@
 from fastapi.testclient import TestClient
 
+CPD = {"kind": "cpd", "code": "CPD", "name": "CPD", "racks": [{"name": "RK-01", "heightU": 42}]}
+
 
 def make_site(client: TestClient, code: str = "BH01") -> dict:
-    response = client.post("/api/sites", json={"code": code, "name": f"Planta {code}"})
+    response = client.post("/api/sites", json={"code": code, "name": f"Planta {code}", "rooms": [CPD]})
     assert response.status_code == 201, response.text
     return response.json()
 
@@ -25,7 +27,7 @@ def test_site_crud(client: TestClient) -> None:
 
 def test_duplicate_site_code_conflicts(client: TestClient) -> None:
     make_site(client)
-    response = client.post("/api/sites", json={"code": "BH01", "name": "Outra"})
+    response = client.post("/api/sites", json={"code": "BH01", "name": "Outra", "rooms": [CPD]})
     assert response.status_code == 409
 
 
@@ -109,3 +111,69 @@ def test_site_coordinates_are_validated(client: TestClient) -> None:
 
     response = client.patch(f"/api/sites/{site['id']}", json={"latitude": 95})
     assert response.status_code == 422
+
+
+def test_vlan_crud_and_unique_per_site(client: TestClient) -> None:
+    site = make_site(client)
+    other = make_site(client, "SP01")
+    payload = {"site_id": site["id"], "vlan_id": 10, "name": "Corporativa", "subnet": "10.20.10.0/24"}
+    created = client.post("/api/vlans", json={**payload, "gateway_ip": "10.20.10.1", "dhcp": True})
+    assert created.status_code == 201, created.text
+    vlan = created.json()
+    assert vlan["subnet"] == "10.20.10.0/24"
+    assert vlan["gateway_ip"] == "10.20.10.1"
+
+    # Same number on the same site conflicts; on another site it is fine.
+    assert client.post("/api/vlans", json=payload).status_code == 409
+    assert client.post("/api/vlans", json={**payload, "site_id": other["id"]}).status_code == 201
+    assert client.post("/api/vlans", json={**payload, "vlan_id": 4095}).status_code == 422
+    bad_subnet = {**payload, "vlan_id": 20, "subnet": "10.20.10.1/24"}
+    assert client.post("/api/vlans", json=bad_subnet).status_code == 422
+
+    listed = client.get("/api/vlans", params={"site_id": site["id"]}).json()
+    assert [v["vlan_id"] for v in listed] == [10]
+
+    updated = client.patch(f"/api/vlans/{vlan['id']}", json={"name": "Escritório"}).json()
+    assert updated["name"] == "Escritório"
+    assert client.delete(f"/api/vlans/{vlan['id']}").status_code == 204
+
+
+def test_site_needs_a_room_and_keeps_the_last_one(client: TestClient) -> None:
+    no_room = {"code": "BH01", "name": "Sem sala", "rooms": []}
+    assert client.post("/api/sites", json=no_room).status_code == 422
+    site = make_site(client)
+    rooms = client.get("/api/rooms", params={"site_id": site["id"]}).json()
+    assert [r["code"] for r in rooms] == ["CPD"]
+
+    rack = {"site_id": site["id"], "kind": "rack", "code": "RK-ADM", "name": "Rack ADM"}
+    assert client.post("/api/rooms", json={**rack, "racks": []}).status_code == 422
+    created = client.post("/api/rooms", json={**rack, "racks": [{"name": "RK-ADM", "heightU": 12}]})
+    assert created.status_code == 201, created.text
+    duplicate = {**rack, "racks": [{"name": "x", "heightU": 12}]}
+    assert client.post("/api/rooms", json=duplicate).status_code == 409
+
+    assert client.delete(f"/api/rooms/{rooms[0]['id']}").status_code == 204
+    # The rack is now the only room left, so it stays.
+    assert client.delete(f"/api/rooms/{created.json()['id']}").status_code == 409
+
+
+def test_topology_and_cluster_one_per_site(client: TestClient) -> None:
+    site = make_site(client)
+    topology = {
+        "site_id": site["id"],
+        "name": "Planta BH01",
+        "document": {"view": [0, 0, 800, 600], "nodes": [{"id": "SW1", "kind": "core"}], "links": []},
+    }
+    created = client.post("/api/topologies", json=topology)
+    assert created.status_code == 201, created.text
+    assert created.json()["document"]["nodes"][0]["id"] == "SW1"
+    assert client.post("/api/topologies", json=topology).status_code == 409
+    assert client.post("/api/topologies", json={**topology, "document": {"nodes": []}}).status_code == 422
+
+    cluster = {"site_id": site["id"], "name": "CL-BH01", "document": {"hosts": [{"name": "esx01"}]}}
+    created = client.post("/api/clusters", json=cluster)
+    assert created.status_code == 201, created.text
+    patched = client.patch(f"/api/clusters/{created.json()['id']}", json={"drs": "Manual"}).json()
+    assert patched["drs"] == "Manual"
+    assert patched["document"]["hosts"][0]["name"] == "esx01"
+    assert client.post("/api/clusters", json=cluster).status_code == 409

@@ -1,10 +1,10 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { Clock } from "./Clock";
+import { ThemeToggle } from "./ThemeToggle";
 
 const LAYERS = [
   { to: "/explorer", label: "Explorer", ready: true },
-  { to: "/wan", label: "L4 · WAN", ready: true },
-  { to: "/lan", label: "L3 · Switches", ready: true },
+  { to: "/wan", label: "Internet", ready: true },
   { to: "/topologia", label: "Topologia", ready: true },
   { to: "/wifi", label: "Wi-Fi", ready: false },
   { to: "/servidores", label: "Servidores", ready: true },
@@ -35,7 +35,11 @@ export function Layout() {
           <NavLink to="/sites" className="layer-tab">
             Sites
           </NavLink>
+          <NavLink to="/vlans" className="layer-tab">
+            VLANs
+          </NavLink>
         </nav>
+        <ThemeToggle />
         <Clock />
       </header>
       <Outlet />

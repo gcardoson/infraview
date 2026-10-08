@@ -1,7 +1,8 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useRef, useState } from "react";
-import { BASEMAPS, labelsLayer, OFFLINE_ID, offlineLayer, saveBasemap, savedBasemap, tileLayer } from "./basemaps";
+import { currentTheme, useTheme } from "../theme";
+import { BASEMAPS, labelsLayer, OFFLINE_ID, offlineLayer, saveBasemap, savedBasemap, themed, tileLayer } from "./basemaps";
 import { MEDIUM_LABEL, type Medium } from "../topology/data";
 import { LINK_LABEL, type LinkState, linkState, type NodeHealth } from "../topology/status";
 import { type ExplorerSite, KIND_SHORT, type PlantConnection, roomHealth, worstHealth } from "./data";
@@ -66,6 +67,9 @@ export function SiteMap({ sites, selectedSite, selectedRoom, onSelectSite, onSel
   const fitted = useRef(false);
   const [base, setBase] = useState<BaseStatus>({ id: BASEMAPS[0].id, state: "loading" });
   const selectBase = useRef<(id: string, auto: boolean) => void>(() => {});
+  const theme = useTheme();
+  const baseId = useRef(base.id);
+  baseId.current = base.id;
 
   useEffect(() => {
     if (!container.current) return;
@@ -92,7 +96,8 @@ export function SiteMap({ sites, selectedSite, selectedRoom, onSelectSite, onSel
         setBase({ id: OFFLINE_ID, state: "ok" });
         return;
       }
-      const layer = tileLayer(BASEMAPS[index]);
+      const basemap = themed(BASEMAPS[index], currentTheme());
+      const layer = tileLayer(basemap);
       let loaded = 0;
       let errors = 0;
       const giveUp = () => {
@@ -109,7 +114,7 @@ export function SiteMap({ sites, selectedSite, selectedRoom, onSelectSite, onSel
       });
       timer = window.setTimeout(giveUp, LOAD_TIMEOUT_MS);
       tiles = layer.addTo(m);
-      labels = labelsLayer(BASEMAPS[index])?.addTo(m) ?? null;
+      labels = labelsLayer(basemap)?.addTo(m) ?? null;
       setBase({ id, state: "loading" });
     };
     selectBase.current = select;
@@ -130,6 +135,14 @@ export function SiteMap({ sites, selectedSite, selectedRoom, onSelectSite, onSel
       map.current = null;
     };
   }, []);
+
+  // Switching theme swaps the tiles for the same service's light or dark style.
+  const firstTheme = useRef(theme);
+  useEffect(() => {
+    if (theme === firstTheme.current) return;
+    firstTheme.current = theme;
+    selectBase.current(baseId.current, false);
+  }, [theme]);
 
   // Markers are cheap, so they are redrawn whenever the data or the selection changes.
   useEffect(() => {
@@ -275,7 +288,8 @@ export function SiteMap({ sites, selectedSite, selectedRoom, onSelectSite, onSel
     if (resetKey && map.current) fitAll(map.current, sitesRef.current);
   }, [resetKey]);
 
-  const current = BASEMAPS.find((b) => b.id === base.id);
+  const found = BASEMAPS.find((b) => b.id === base.id);
+  const current = found && themed(found, theme);
   const status =
     base.id === OFFLINE_ID
       ? "Sem mapa online: exibindo contornos offline"
@@ -320,7 +334,7 @@ export function SiteMap({ sites, selectedSite, selectedRoom, onSelectSite, onSel
           >
             {BASEMAPS.map((b) => (
               <option key={b.id} value={b.id}>
-                {b.label}
+                {themed(b, theme).label}
               </option>
             ))}
             <option value={OFFLINE_ID}>Somente contornos (offline)</option>

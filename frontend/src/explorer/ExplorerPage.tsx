@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { type ExplorerSite, type Health, KIND_SHORT, roomHealth, usedU, worstHealth } from "./data";
-import { TOPOLOGIES } from "../topology/data";
 import { useTopologiesStatus } from "../topology/status";
+import { EditActions } from "../components/EditActions";
+import { SiteForm } from "../components/SiteForm";
+import { RoomForm } from "./RoomForm";
 import { SiteMap } from "./SiteMap";
 import { useExplorer } from "./useExplorer";
 
@@ -13,11 +15,12 @@ const siteHealth = (s: ExplorerSite) => worstHealth(s.rooms.map(roomHealth));
 
 export function ExplorerPage() {
   const [params, setParams] = useSearchParams();
-  const { sites, source, explorer } = useExplorer();
-  const health = useTopologiesStatus(TOPOLOGIES);
+  const { inventory, explorer } = useExplorer();
+  const health = useTopologiesStatus(inventory.topologies);
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [resetKey, setResetKey] = useState(0);
+  const [editing, setEditing] = useState<"site" | "new-site" | "new-room" | null>(null);
 
   const siteId = Number(params.get("site")) || null;
   const select = (next: { site?: number | null; room?: string | null }) => {
@@ -29,7 +32,7 @@ export function ExplorerPage() {
   };
 
   const selected = explorer.find((s) => s.site.id === siteId) ?? null;
-  const unplaced = source.filter((s) => s.latitude === null || s.longitude === null);
+  const unplaced = inventory.sites.filter((s) => s.latitude === null || s.longitude === null);
 
   const q = query.trim().toLowerCase();
   const matches = (text: string) => text.toLowerCase().includes(q);
@@ -117,7 +120,7 @@ export function ExplorerPage() {
             );
           })}
         </ul>
-        {!visible.length && !sites.loading && <p className="muted empty">Nada encontrado.</p>}
+        {!visible.length && !inventory.loading && <p className="muted empty">Nada encontrado.</p>}
         {unplaced.length > 0 && (
           <p className="ex-unplaced muted">
             {unplaced.length === 1 ? "1 site sem coordenadas" : `${unplaced.length} sites sem coordenadas`} (
@@ -143,6 +146,16 @@ export function ExplorerPage() {
           >
             Sensores simulados
           </span>
+          {selected ? (
+            <EditActions
+              addLabel={`Novo CPD ou rack em ${selected.site.code}`}
+              onAdd={() => setEditing("new-room")}
+              editLabel={`Editar o site ${selected.site.code}`}
+              onEdit={() => setEditing("site")}
+            />
+          ) : (
+            <EditActions addLabel="Novo site" onAdd={() => setEditing("new-site")} editLabel="Selecione um site para editar" />
+          )}
           <button
             className="btn ex-reset"
             onClick={() => {
@@ -158,9 +171,9 @@ export function ExplorerPage() {
           <section className="ex-card ex-site-card">
             <div className="ex-card-eyebrow">
               Site · {selected.site.code}
-              <Link to="/sites" className="ex-edit">
+              <button type="button" className="ex-edit" onClick={() => setEditing("site")}>
                 Editar
-              </Link>
+              </button>
             </div>
             <h2>{selected.site.name}</h2>
             <div className="ex-room-sub muted mono">
@@ -195,6 +208,31 @@ export function ExplorerPage() {
           </section>
         )}
       </main>
+
+      {(editing === "site" || editing === "new-site") && (
+        <SiteForm
+          site={editing === "site" ? (selected?.site ?? null) : null}
+          onClose={() => setEditing(null)}
+          onSaved={(site) => {
+            setEditing(null);
+            inventory.reload();
+            select({ site: site.id });
+          }}
+        />
+      )}
+      {editing === "new-room" && selected && (
+        <RoomForm
+          room={null}
+          siteId={selected.site.id}
+          sites={inventory.sites}
+          topologies={inventory.topologies}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            inventory.reload();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import type { Site } from "../api";
-import { type Medium, type NodeKind, type SiteTopology, TOPOLOGIES, type TopoLink, type TopoNode } from "../topology/data";
+import type { RoomKind, RoomRecord, Site } from "../api";
+import type { Medium, NodeKind, SiteTopology, TopoLink, TopoNode } from "../topology/data";
 
 /*
  * What the map shows at each plant: one CPD (core equipment, telecom and link hand-off, servers,
- * backup, storage) and several access racks, where the network is distributed. Both come from the
- * plant's Layer 2 drawing (Topologia); room sensors and power stay simulated until they are collected.
+ * backup, storage) and several access racks, where the network is distributed. Rooms are registered per
+ * site; the switch a room holds (its node in the plant's Layer 2 drawing) gives its equipment and links.
+ * Room sensors and power stay simulated until they are collected.
  */
 
-export type RoomKind = "cpd" | "rack";
+export type { RoomKind };
 export type Health = "ok" | "warn" | "crit";
 export type UnitKind = "firewall" | "switch" | "server" | "storage" | "patch" | "ups" | "other";
 
@@ -29,6 +30,7 @@ export interface Rack {
 
 export interface Room {
   id: string;
+  record: RoomRecord;
   siteId: number;
   code: string;
   name: string;
@@ -152,105 +154,91 @@ interface Spot {
   plan: RackPlan;
 }
 
-/*
- * Rooms of a plant from its Layer 2 drawing: the central switch sits in the CPD and every other
- * switch is an access rack. APs belong to the room of the switch they hang from.
- */
-function fromTopology(topo: SiteTopology) {
-  // Nodes drawn inside a group belong to another site (BR-ACS shows Limeira's CPD for context).
-  const elsewhere = (n: TopoNode) => topo.groups?.some((g) => n.x >= g.x && n.x <= g.x + g.w && n.y >= g.y && n.y <= g.y + g.h);
-  const switches = topo.nodes.filter((n) => (n.kind === "switch" || n.kind === "core") && n.hostname && !elsewhere(n));
-  // The central switch: the one the drawing places in the CPD, otherwise the plant's first core switch.
-  const core = switches.find((n) => n.location?.toUpperCase().startsWith("CPD")) ?? switches.find((n) => n.kind === "core");
-  if (!core) return null;
+/* Equipment and links of the room that holds `node`, from the plant's Layer 2 drawing. */
+function spotOf(topo: SiteTopology, node: TopoNode, cpd: boolean): Spot {
   const byId = new Map(topo.nodes.map((n) => [n.id, n]));
   const name = (n?: TopoNode) => (n ? (n.hostname ?? n.location ?? n.id) : "?");
-  const peersOf = (n: TopoNode) =>
-    topo.links
-      .filter((l) => l.a.node === n.id || l.b.node === n.id)
-      .map((l) => {
-        const [own, other] = l.a.node === n.id ? [l.a, l.b] : [l.b, l.a];
-        return { link: l, own, end: other, other: byId.get(other.node) };
-      });
-
-  const spot = (node: TopoNode, cpd: boolean): Spot => {
-    const peers = peersOf(node);
-    const aps = peers.filter((p) => p.other?.kind === "ap").map((p) => p.other!);
-    const uplinks = peers.filter((p) => p.other?.kind !== "ap");
-    const stack = stackOf(node.model);
-    const fibres = uplinks.filter((p) => fibre(p.link.medium));
-    const fibreCount = fibres.reduce((s, p) => s + (p.link.fibers ?? 0), 0);
-    const plan: RackPlan = [];
-    if (fibres.length)
-      plan.push([
-        fibreCount ? `DIO · ${fibreCount} fibras documentadas` : `DIO · ${fibres.length} cabo(s) óptico(s)`,
-        "patch",
-        1,
-      ]);
-    stack.forEach((m, i) => plan.push([`${node.hostname}${stack.length > 1 ? ` #${i + 1}` : ""} ${m}`.trim(), "switch", 1]));
-    return {
-      node,
-      heightU: cpd ? 42 : stack.length > 1 || /-48/.test(node.model ?? "") ? 16 : 12,
-      plan,
-      devices: [node, ...aps].map((n) => ({
-        nodeId: n.id,
-        hostname: name(n),
-        ip: n.ip,
-        model: n.model,
-        kind: n.kind,
-        nok: n.nok,
-      })),
-      links: uplinks.map(({ link, own, end, other }) => ({
-        id: link.id,
-        peer: other?.hostname
-          ? `${other.hostname}${other.location ? ` · ${other.location}` : ""}`
-          : (other?.location ?? other?.id ?? "?"),
-        medium: link.medium,
-        fibers: link.fibers,
-        ports: [own.port, end.port].filter(Boolean).join(" ↔ "),
-        broken: !!link.breaks?.length,
-        note: link.note,
-      })),
-    };
+  const peers = topo.links
+    .filter((l) => l.a.node === node.id || l.b.node === node.id)
+    .map((l) => {
+      const [own, other] = l.a.node === node.id ? [l.a, l.b] : [l.b, l.a];
+      return { link: l, own, end: other, other: byId.get(other.node) };
+    });
+  const aps = peers.filter((p) => p.other?.kind === "ap").map((p) => p.other!);
+  const uplinks = peers.filter((p) => p.other?.kind !== "ap");
+  const stack = stackOf(node.model);
+  const fibres = uplinks.filter((p) => fibre(p.link.medium));
+  const fibreCount = fibres.reduce((s, p) => s + (p.link.fibers ?? 0), 0);
+  const plan: RackPlan = [];
+  if (fibres.length)
+    plan.push([
+      fibreCount ? `DIO · ${fibreCount} fibras documentadas` : `DIO · ${fibres.length} cabo(s) óptico(s)`,
+      "patch",
+      1,
+    ]);
+  stack.forEach((m, i) => plan.push([`${node.hostname ?? node.id}${stack.length > 1 ? ` #${i + 1}` : ""} ${m}`.trim(), "switch", 1]));
+  return {
+    node,
+    heightU: cpd ? 42 : stack.length > 1 || /-48/.test(node.model ?? "") ? 16 : 12,
+    plan,
+    devices: [node, ...aps].map((n) => ({
+      nodeId: n.id,
+      hostname: name(n),
+      ip: n.ip,
+      model: n.model,
+      kind: n.kind,
+      nok: n.nok,
+    })),
+    links: uplinks.map(({ link, own, end, other }) => ({
+      id: link.id,
+      peer: other?.hostname
+        ? `${other.hostname}${other.location ? ` · ${other.location}` : ""}`
+        : (other?.location ?? other?.id ?? "?"),
+      medium: link.medium,
+      fibers: link.fibers,
+      ports: [own.port, end.port].filter(Boolean).join(" ↔ "),
+      broken: !!link.breaks?.length,
+      note: link.note,
+    })),
   };
+}
 
-  // The drawings carry no geography, so the map keeps the drawing's layout around the CPD, scaled so
-  // the plant spans about 2 km. Passive points (substations, bypasses) stay as waypoints of the links.
-  const placed = [...switches, ...topo.nodes.filter((n) => n.kind === "passive" && !elsewhere(n))];
+// Nodes drawn inside a group belong to another site (BR-ACS shows Limeira's CPD for context).
+const elsewhere = (topo: SiteTopology, n: TopoNode) =>
+  !!topo.groups?.some((g) => n.x >= g.x && n.x <= g.x + g.w && n.y >= g.y && n.y <= g.y + g.h);
+
+/* Switches of a drawing that can sit in a room: the ones with a hostname, outside context groups. */
+export const roomNodes = (topo: SiteTopology) =>
+  topo.nodes.filter((n) => (n.kind === "switch" || n.kind === "core") && n.hostname && !elsewhere(topo, n));
+
+/*
+ * The drawings carry no geography, so the map keeps the drawing's layout around the CPD's switch,
+ * scaled so the plant spans about 2 km (metres east/north of it). Passive points stay as waypoints.
+ */
+function drawingLayout(topo: SiteTopology, centreNode: TopoNode | undefined) {
+  const placed = [...roomNodes(topo), ...topo.nodes.filter((n) => n.kind === "passive" && !elsewhere(topo, n))];
+  if (!placed.length) return { layout: new Map<string, Xy>(), passives: [] as TopoNode[] };
   const centre = (n: TopoNode) => [n.x + n.w / 2, n.y + n.h / 2];
-  const [cx, cy] = centre(core);
-  const span = Math.max(1, ...placed.map((n) => centre(n)[0])) - Math.min(...placed.map((n) => centre(n)[0]));
+  const [cx, cy] = centre(centreNode ?? placed[0]);
+  const span = Math.max(1, Math.max(...placed.map((n) => centre(n)[0])) - Math.min(...placed.map((n) => centre(n)[0])));
   const metres = 2000 / span;
   // The drawings are wide and short; stretching the rows apart keeps labels readable on the map.
-  const layout = new Map(
-    placed.map((n) => [n.id, [(centre(n)[0] - cx) * metres, -(centre(n)[1] - cy) * metres * 1.6] as [number, number]]),
-  );
+  const layout = new Map(placed.map((n) => [n.id, [(centre(n)[0] - cx) * metres, -(centre(n)[1] - cy) * metres * 1.6] as Xy]));
+  return { layout, passives: placed.filter((n) => n.kind === "passive") };
+}
 
-  // One line per pair of places; parallel cables (two fibres to the same building) share it.
+/* One line per pair of placed nodes; parallel cables (two fibres to the same building) share it. */
+function plantConnections(topo: SiteTopology, layout: Map<string, Xy>) {
   const connections = new Map<string, PlantConnection>();
   for (const link of topo.links) {
     if (!layout.has(link.a.node) || !layout.has(link.b.node)) continue;
     const [a, b] = [link.a.node, link.b.node].sort();
     const key = `${a}~${b}`;
-    const entry = connections.get(key) ?? {
-      id: key,
-      a,
-      b,
-      links: [],
-      path: route(layout.get(a)!, layout.get(b)!, [...layout.values()]),
-    };
+    const entry = connections.get(key) ?? { id: key, a, b, links: [], path: route(layout.get(a)!, layout.get(b)!, [...layout.values()]) };
     entry.links.push(link);
     connections.set(key, entry);
   }
-
-  return {
-    topology: topo.code,
-    cpd: spot(core, true),
-    racks: switches.filter((n) => n !== core).map((n) => spot(n, false)),
-    passives: placed.filter((n) => n.kind === "passive"),
-    layout,
-    connections: [...connections.values()],
-  };
+  return [...connections.values()];
 }
 
 /* A line on the map between two places of a plant, carrying every documented cable between them. */
@@ -259,7 +247,7 @@ export interface PlantConnection {
   a: string;
   b: string;
   links: TopoLink[];
-  /* Metres east/north of the CPD inside fromTopology; latitude/longitude once placed on the map. */
+  /* Metres east/north of the CPD while laid out; latitude/longitude once placed on the map. */
   path: [number, number][];
 }
 
@@ -300,16 +288,15 @@ export interface Waypoint {
   lng: number;
 }
 
-const toLatLng = (lat: number, lng: number, [east, north]: [number, number]): [number, number] => [
-  lat + north / 111_320,
-  lng + east / (111_320 * Math.cos((lat * Math.PI) / 180)),
+const METRES_PER_DEGREE = 111_320;
+const toLatLng = (lat: number, lng: number, [east, north]: Xy): [number, number] => [
+  lat + north / METRES_PER_DEGREE,
+  lng + east / (METRES_PER_DEGREE * Math.cos((lat * Math.PI) / 180)),
 ];
-
-export function topologyOf(site: Site): SiteTopology | undefined {
-  return TOPOLOGIES.find(
-    (t) => t.code === site.code || (!!site.city && t.city.toLowerCase().startsWith(site.city.toLowerCase())),
-  );
-}
+const toOffset = (lat: number, lng: number, at: [number, number]): Xy => [
+  (at[1] - lng) * METRES_PER_DEGREE * Math.cos((lat * Math.PI) / 180),
+  (at[0] - lat) * METRES_PER_DEGREE,
+];
 
 export interface ExplorerSite {
   site: Site;
@@ -323,80 +310,80 @@ export interface ExplorerSite {
   connections: PlantConnection[];
 }
 
-export function buildExplorer(sites: Site[]): ExplorerSite[] {
+export function buildExplorer(sites: Site[], records: RoomRecord[], topologies: SiteTopology[]): ExplorerSite[] {
   return sites
     .map((site): ExplorerSite | null => {
       if (site.latitude === null || site.longitude === null) return null;
-      const rand = rng(Math.abs(site.id) * 7349 + 3);
-      const topo = topologyOf(site);
-      const plant = topo ? fromTopology(topo) : null;
-      // Only the network rack is documented; the servers and storage rack stays empty until it is.
-      const cpdRacks = [
-        buildRack(`${site.id}-CPD-0`, "RK-01 · Rede", 42, plant?.cpd.plan ?? []),
-        buildRack(`${site.id}-CPD-1`, "RK-02 · Servidores", 42, []),
-      ];
-      const core = plant?.cpd.node;
-      const cpd: Room = {
-        id: `${site.id}-CPD`,
-        siteId: site.id,
-        code: "CPD",
-        name: "CPD",
-        kind: "cpd",
-        building: core ? `Switch central ${core.hostname}` : "Sem topologia documentada",
-        lat: site.latitude,
-        lng: site.longitude,
-        temperatureC: 21 + rand() * 2.5,
-        humidity: 40 + rand() * 15,
-        powerKw: 3 + rand() * 3,
-        powerCapacityKw: 16,
-        upsMinutes: 25 + rand() * 25,
-        cooling: "2× ar-condicionado de precisão 12 kW (N+1)",
-        access: "Biometria + cartão",
-        cameras: rand() < 0.5 ? 1 : 2,
-        racks: cpdRacks,
-        nodeId: core?.id,
-        topology: plant?.topology,
-        devices: plant?.cpd.devices ?? [],
-        links: plant?.cpd.links ?? [],
+      const [lat0, lng0] = [site.latitude, site.longitude];
+      const topo = topologies.find((t) => t.siteId === site.id);
+      const own = records
+        .filter((r) => r.site_id === site.id)
+        .sort((a, b) => (a.kind === b.kind ? a.id - b.id : a.kind === "cpd" ? -1 : 1));
+      const nodeOf = (r: RoomRecord) => (topo && r.node_id ? topo.nodes.find((n) => n.id === r.node_id) : undefined);
+      const cpdRecord = own.find((r) => r.kind === "cpd");
+      const { layout, passives } = topo ? drawingLayout(topo, cpdRecord && nodeOf(cpdRecord)) : { layout: new Map<string, Xy>(), passives: [] };
+
+      // Where each room goes: its own coordinates, else its switch's place in the drawing, else the site
+      // (the CPD) or a ring around it (racks with neither).
+      const unplaced = own.filter((r) => r.latitude === null && !(nodeOf(r) && layout.has(nodeOf(r)!.id)) && r.kind !== "cpd");
+      const offsetOf = (r: RoomRecord): Xy => {
+        if (r.latitude !== null && r.longitude !== null) return toOffset(lat0, lng0, [r.latitude, r.longitude]);
+        const node = nodeOf(r);
+        if (node && layout.has(node.id)) return layout.get(node.id)!;
+        if (r.kind === "cpd") return [0, 0];
+        const angle = (unplaced.indexOf(r) / Math.max(1, unplaced.length)) * 2 * Math.PI;
+        return [Math.cos(angle) * 350, Math.sin(angle) * 350];
       };
-      const racks = (plant?.racks ?? []).map((spot, i): Room => {
-        const code = spot.node.hostname!;
-        const rack = buildRack(`${site.id}-${code}-0`, code, spot.heightU, spot.plan);
-        const [lat, lng] = toLatLng(site.latitude!, site.longitude!, plant!.layout.get(spot.node.id)!);
+      for (const r of own) {
+        const node = nodeOf(r);
+        if (node) layout.set(node.id, offsetOf(r));
+      }
+
+      const rooms = own.map((record, i): Room => {
+        const node = nodeOf(record);
+        const cpd = record.kind === "cpd";
+        const spot = node && topo ? spotOf(topo, node, cpd) : null;
+        // The first rack holds the network equipment of the room's switch.
+        const racks = record.racks.map((spec, k) =>
+          buildRack(`${record.id}-${k}`, spec.name, spec.heightU, k === 0 ? (spot?.plan ?? []) : []),
+        );
+        const [lat, lng] = toLatLng(lat0, lng0, offsetOf(record));
+        const r = rng(record.id * 7919 + 11);
         return {
-          id: `${site.id}-${code}`,
+          id: String(record.id),
+          record,
           siteId: site.id,
-          code,
-          name: `Rack ${spot.node.location ?? code}`,
-          kind: "rack",
-          building: spot.node.locationEn ? `${spot.node.location} / ${spot.node.locationEn}` : (spot.node.location ?? ""),
+          code: record.code,
+          name: record.name,
+          kind: record.kind,
+          building: record.building ?? (cpd && node ? `Switch central ${node.hostname}` : ""),
           lat,
           lng,
-          temperatureC: 25 + rand() * 4 + (i === 1 ? 4 : 0),
-          humidity: 42 + rand() * 18,
-          powerKw: 0.25 + rand() * 0.5,
-          powerCapacityKw: 1.5,
-          upsMinutes: 12 + rand() * 18,
-          cooling: rand() < 0.6 ? "Ventilação forçada" : "Ventilação natural",
-          access: rand() < 0.5 ? "Chave" : "Cadeado",
-          cameras: 0,
-          racks: [rack],
-          nodeId: spot.node.id,
-          topology: plant?.topology,
-          devices: spot.devices,
-          links: spot.links,
+          temperatureC: cpd ? 21 + r() * 2.5 : 25 + r() * 4 + (i === 2 ? 4 : 0),
+          humidity: cpd ? 40 + r() * 15 : 42 + r() * 18,
+          powerKw: cpd ? 3 + r() * 3 : 0.25 + r() * 0.5,
+          powerCapacityKw: record.power_capacity_kw ?? (cpd ? 16 : 1.5),
+          upsMinutes: cpd ? 25 + r() * 25 : 12 + r() * 18,
+          cooling: record.cooling ?? "—",
+          access: record.access ?? "—",
+          cameras: record.cameras,
+          racks,
+          nodeId: node?.id,
+          topology: topo?.code,
+          devices: spot?.devices ?? [],
+          links: spot?.links ?? [],
         };
       });
-      const positions = Object.fromEntries(
-        [...(plant?.layout ?? [])].map(([id, offset]) => [id, toLatLng(site.latitude!, site.longitude!, offset)]),
-      );
+
+      const connections = topo ? plantConnections(topo, layout) : [];
+      const positions = Object.fromEntries([...layout].map(([id, offset]) => [id, toLatLng(lat0, lng0, offset)]));
       return {
         site,
-        lat: site.latitude,
-        lng: site.longitude,
-        topology: plant?.topology,
-        rooms: [cpd, ...racks],
-        waypoints: (plant?.passives ?? []).map((n) => ({
+        lat: lat0,
+        lng: lng0,
+        topology: topo?.code,
+        rooms,
+        waypoints: passives.map((n) => ({
           nodeId: n.id,
           name: n.location ?? n.id,
           bypass: !!n.bypass,
@@ -404,10 +391,7 @@ export function buildExplorer(sites: Site[]): ExplorerSite[] {
           lng: positions[n.id][1],
         })),
         positions,
-        connections: (plant?.connections ?? []).map((c) => ({
-          ...c,
-          path: c.path.map((offset) => toLatLng(site.latitude!, site.longitude!, offset)),
-        })),
+        connections: connections.map((c) => ({ ...c, path: c.path.map((offset) => toLatLng(lat0, lng0, offset)) })),
       };
     })
     .filter((s): s is ExplorerSite => s !== null);

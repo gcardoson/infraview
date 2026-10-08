@@ -1,4 +1,5 @@
 import { type Endpoint, type Point, type SiteTopology, type TopoLink, type TopoNode } from "./data";
+import { midpoint } from "./edit";
 import { type LinkState, type NodeHealth, hasDevice, linkState } from "./status";
 
 /* SVG rendering of a plant's Layer 2 drawing, in the InfraView dark style. */
@@ -10,7 +11,8 @@ interface Props {
   health: Record<string, NodeHealth>;
   selected: Selection;
   hovered: Selection;
-  onSelect: (s: Selection) => void;
+  /* The event lets the page tell a plain click from Ctrl/Shift+click (add to the selection). */
+  onSelect: (s: Selection, e?: React.MouseEvent) => void;
   onHover: (s: Selection, e?: React.MouseEvent) => void;
 }
 
@@ -20,22 +22,26 @@ const fit = (text: string, charWidth: number, max: number) =>
 
 const path = (points: Point[]) => points.map(([x, y], i) => `${i ? "L" : "M"}${x} ${y}`).join(" ");
 
-/* Port name next to where the cable meets the frame: rotated along vertical cables, like the drawing. */
-function PortLabel({ end, from, to }: { end: Endpoint; from: Point; to: Point }) {
+/*
+ * Port name next to where the cable meets the frame: rotated along vertical cables, like the drawing,
+ * and set beside the line rather than on it. The editor can drag it elsewhere (labelOffset).
+ */
+function PortLabel({ end, which, from, to }: { end: Endpoint; which: "a" | "b"; from: Point; to: Point }) {
   if (!end.port) return null;
   const vertical = from[0] === to[0];
   const dir = vertical ? Math.sign(to[1] - from[1]) : Math.sign(to[0] - from[0]);
+  const [ox, oy] = end.labelOffset ?? [0, 0];
   if (vertical) {
-    const x = from[0] + 4;
-    const y = from[1] + dir * 5;
+    const x = from[0] + 2.5 + ox;
+    const y = from[1] + dir * 5 + oy;
     return (
-      <text className="topo-port" x={x} y={y} transform={`rotate(90 ${x} ${y})`} textAnchor={dir > 0 ? "start" : "end"} dominantBaseline="hanging">
+      <text className="topo-port" data-port={which} x={x} y={y} transform={`rotate(90 ${x} ${y})`} textAnchor={dir > 0 ? "start" : "end"}>
         {end.port}
       </text>
     );
   }
   return (
-    <text className="topo-port" x={from[0] + dir * 5} y={from[1] - 3} textAnchor={dir > 0 ? "start" : "end"}>
+    <text className="topo-port" data-port={which} x={from[0] + dir * 5 + ox} y={from[1] - 3.5 + oy} textAnchor={dir > 0 ? "start" : "end"}>
       {end.port}
     </text>
   );
@@ -60,7 +66,14 @@ function Break({ at }: { at: Point }) {
   return <path className="topo-break" d={`M${x - 4} ${y - 4} L${x + 4} ${y + 4} M${x + 4} ${y - 4} L${x - 4} ${y + 4}`} />;
 }
 
-function LinkShape({ link, state, active, onSelect, onHover }: { link: TopoLink; state: LinkState; active: boolean } & Pick<Props, "onSelect" | "onHover">) {
+/* Where the fibre count is written: the drawing's own spot, or just above the middle of the cable. */
+export const fibersAt = (link: TopoLink): Point => {
+  if (link.labelAt) return link.labelAt;
+  const [x, y] = midpoint(link.points);
+  return [x, y - 4];
+};
+
+export function LinkShape({ link, state, active, onSelect, onHover }: { link: TopoLink; state: LinkState; active: boolean } & Pick<Props, "onSelect" | "onHover">) {
   const pts = link.points;
   const segments = pts.slice(1).map((p, i) => [pts[i], p] as [Point, Point]);
   const solid = segments.filter((_, i) => !link.dotted?.includes(i));
@@ -73,7 +86,7 @@ function LinkShape({ link, state, active, onSelect, onHover }: { link: TopoLink;
       className={`topo-link ${link.medium} ${state}${active ? " active" : ""}`}
       onClick={(e) => {
         e.stopPropagation();
-        onSelect(select);
+        onSelect(select, e);
       }}
       onMouseMove={(e) => onHover(select, e)}
       onMouseLeave={() => onHover(null)}
@@ -84,10 +97,10 @@ function LinkShape({ link, state, active, onSelect, onHover }: { link: TopoLink;
       {state !== "down" && link.medium !== "wireless" && <path className="topo-link-flow" d={d} />}
       <Connector end={link.a} at={pts[0]} toward={pts[1]} />
       <Connector end={link.b} at={pts[pts.length - 1]} toward={pts[pts.length - 2]} />
-      <PortLabel end={link.a} from={pts[0]} to={pts[1]} />
-      <PortLabel end={link.b} from={pts[pts.length - 1]} to={pts[pts.length - 2]} />
-      {link.fibers && link.labelAt && (
-        <text className="topo-fibers" x={link.labelAt[0]} y={link.labelAt[1]} textAnchor="middle">
+      <PortLabel end={link.a} which="a" from={pts[0]} to={pts[1]} />
+      <PortLabel end={link.b} which="b" from={pts[pts.length - 1]} to={pts[pts.length - 2]} />
+      {link.fibers && (
+        <text className="topo-fibers" x={fibersAt(link)[0]} y={fibersAt(link)[1]} textAnchor="middle">
           {link.fibers}FO
         </text>
       )}
@@ -115,13 +128,22 @@ function Faceplate({ x, y, w, ports }: { x: number; y: number; w: number; ports:
   );
 }
 
-function NodeShape({ node, health, active, onSelect, onHover }: { node: TopoNode; health?: NodeHealth; active: boolean } & Pick<Props, "onSelect" | "onHover">) {
+export function NodeShape({
+  node,
+  health,
+  active,
+  onSelect,
+  onHover,
+}: { node: TopoNode; health?: NodeHealth; active: boolean } & Pick<
+  Props,
+  "onSelect" | "onHover"
+>) {
   const status = health?.status ?? "none";
   const select = { kind: "node", id: node.id } as const;
   const events = {
     onClick: (e: React.MouseEvent) => {
       e.stopPropagation();
-      onSelect(select);
+      onSelect(select, e);
     },
     onMouseMove: (e: React.MouseEvent) => onHover(select, e),
     onMouseLeave: () => onHover(null),
@@ -260,7 +282,14 @@ export function Diagram({ topology, health, selected, hovered, onSelect, onHover
         <LinkShape key={l.id} link={l} state={linkState(l, health)} active={lit.has(`l:${l.id}`)} onSelect={onSelect} onHover={onHover} />
       ))}
       {topology.nodes.map((n) => (
-        <NodeShape key={n.id} node={n} health={health[n.id]} active={lit.has(`n:${n.id}`)} onSelect={onSelect} onHover={onHover} />
+        <NodeShape
+          key={n.id}
+          node={n}
+          health={health[n.id]}
+          active={lit.has(`n:${n.id}`)}
+          onSelect={onSelect}
+          onHover={onHover}
+        />
       ))}
     </svg>
   );

@@ -102,13 +102,13 @@ export function AreaChart({ title, spec, values, icon }: { title: string; spec: 
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="room-chart-svg" aria-hidden>
         <defs>
           <linearGradient id={`g${id}`} x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor={spec.color} stopOpacity="0.35" />
-            <stop offset="100%" stopColor={spec.color} stopOpacity="0" />
+            <stop offset="0%" style={{ stopColor: spec.color }} stopOpacity="0.35" />
+            <stop offset="100%" style={{ stopColor: spec.color }} stopOpacity="0" />
           </linearGradient>
         </defs>
         <line x1="0" x2={W} y1={avgY} y2={avgY} className="room-chart-avg" />
         <path d={area} fill={`url(#g${id})`} />
-        <path d={line} fill="none" stroke={spec.color} strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
+        <path d={line} fill="none" style={{ stroke: spec.color }} strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
       </svg>
       <div className="room-chart-axis mono">
         <span>-24h</span>

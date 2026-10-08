@@ -30,15 +30,15 @@ export type MetricKey =
   | "energy";
 
 export const METRICS: Record<MetricKey, MetricSpec> = {
-  tempFront: { key: "tempFront", label: "Temperatura", unit: "°C", min: 10, max: 40, digits: 1, high: [27, 30], color: "#2ee6a0" },
-  humFront: { key: "humFront", label: "Umidade", unit: "%", min: 0, max: 100, digits: 1, high: [60, 70], low: [30, 20], color: "#5aa9ff" },
-  tempIn: { key: "tempIn", label: "Temperatura", unit: "°C", min: 10, max: 40, digits: 1, high: [27, 30], color: "#2ee6a0" },
-  humIn: { key: "humIn", label: "Umidade", unit: "%", min: 0, max: 100, digits: 1, high: [60, 70], low: [30, 20], color: "#5aa9ff" },
-  voltage: { key: "voltage", label: "Tensão", unit: "V", min: 180, max: 250, digits: 1, high: [232, 240], low: [208, 200], color: "#b58cff" },
-  power: { key: "power", label: "Potência", unit: "kW", min: 0, max: 10, digits: 2, color: "#f2b84b" },
-  co2: { key: "co2", label: "CO₂", unit: "ppm", min: 0, max: 2000, digits: 0, high: [1000, 1500], color: "#2ee6a0" },
-  pm25: { key: "pm25", label: "PM2.5", unit: "µg/m³", min: 0, max: 75, digits: 1, high: [25, 50], color: "#ff8a5c" },
-  energy: { key: "energy", label: "Consumo", unit: "kWh", min: 0, max: 1, digits: 2, color: "#f2b84b" },
+  tempFront: { key: "tempFront", label: "Temperatura", unit: "°C", min: 10, max: 40, digits: 1, high: [27, 30], color: "var(--chart-green)" },
+  humFront: { key: "humFront", label: "Umidade", unit: "%", min: 0, max: 100, digits: 1, high: [60, 70], low: [30, 20], color: "var(--chart-blue)" },
+  tempIn: { key: "tempIn", label: "Temperatura", unit: "°C", min: 10, max: 40, digits: 1, high: [27, 30], color: "var(--chart-green)" },
+  humIn: { key: "humIn", label: "Umidade", unit: "%", min: 0, max: 100, digits: 1, high: [60, 70], low: [30, 20], color: "var(--chart-blue)" },
+  voltage: { key: "voltage", label: "Tensão", unit: "V", min: 180, max: 250, digits: 1, high: [232, 240], low: [208, 200], color: "var(--chart-purple)" },
+  power: { key: "power", label: "Potência", unit: "kW", min: 0, max: 10, digits: 2, color: "var(--chart-amber)" },
+  co2: { key: "co2", label: "CO₂", unit: "ppm", min: 0, max: 2000, digits: 0, high: [1000, 1500], color: "var(--chart-green)" },
+  pm25: { key: "pm25", label: "PM2.5", unit: "µg/m³", min: 0, max: 75, digits: 1, high: [25, 50], color: "var(--chart-orange)" },
+  energy: { key: "energy", label: "Consumo", unit: "kWh", min: 0, max: 1, digits: 2, color: "var(--chart-amber)" },
 };
 
 export function levelOf(spec: MetricSpec, value: number): Level {

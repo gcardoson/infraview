@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import type { Site } from "../api";
-import { FALLBACK_SITES } from "../fictitious";
+import type { ClusterRecord, Site } from "../api";
 
-/* Fictitious virtualization inventory (clusters, hosts, memory slots, datastores) until the real collection exists. */
+/*
+ * Virtualization inventory (clusters, hosts, memory slots, datastores), registered per site. Usage
+ * (CPU, memory, datastore occupancy, disk rebuilds) is simulated until vCenter is collected.
+ */
 
 export interface CpuInfo {
   vendor: "Intel" | "AMD";
@@ -70,6 +72,7 @@ export interface StorageArray {
 
 export interface Cluster {
   id: string;
+  record: ClusterRecord;
   siteId: number;
   siteCode: string;
   siteName: string;
@@ -135,7 +138,7 @@ function rng(seed: number) {
   };
 }
 
-interface HostTemplate {
+export interface HostTemplate {
   vendor: string;
   model: string;
   cpu: CpuInfo;
@@ -144,7 +147,8 @@ interface HostTemplate {
   moduleGb: number;
 }
 
-const TEMPLATES: Record<string, HostTemplate> = {
+/* Common server models, offered when adding a host. */
+export const TEMPLATES: Record<string, HostTemplate> = {
   r750: {
     vendor: "Dell",
     model: "PowerEdge R750",
@@ -195,124 +199,44 @@ const TEMPLATES: Record<string, HostTemplate> = {
   },
 };
 
-interface ClusterPlan {
-  suffix: string;
-  hosts: string[];
-  vcenter: string;
-  array: { name: string; model: string; raid: string; bays: number; filled: number; kind: "NVMe" | "SSD" | "HDD"; sizeTb: number };
-  datastores: Omit<Datastore, "id" | "usedTb" | "provisionedTb" | "hosts" | "local">[];
-  nfs: Omit<Datastore, "id" | "usedTb" | "provisionedTb" | "hosts" | "local">[];
-}
-
-const PLANS: ClusterPlan[] = [
-  {
-    suffix: "PROD",
-    hosts: ["r750", "r750", "dl380g11", "r740"],
-    vcenter: "vcsa01",
-    array: { name: "SAN-01", model: "Dell PowerStore 500T", raid: "RAID 6 (DRE)", bays: 25, filled: 21, kind: "NVMe", sizeTb: 3.84 },
-    datastores: [
-      { name: "DS-{S}-VMFS-01", type: "VMFS 6", backing: "PowerStore · LUN 01 · FC 32G", capacityTb: 16 },
-      { name: "DS-{S}-VMFS-02", type: "VMFS 6", backing: "PowerStore · LUN 02 · FC 32G", capacityTb: 16 },
-      { name: "DS-{S}-SQL", type: "VMFS 6", backing: "PowerStore · LUN 03 · FC 32G", capacityTb: 8 },
-    ],
-    nfs: [
-      { name: "NFS-{S}-BACKUP", type: "NFS 4.1", backing: "Synology RS3621 · /volume1/vmware", capacityTb: 48 },
-      { name: "NFS-{S}-ISO", type: "NFS 3", backing: "Synology RS3621 · /volume2/iso", capacityTb: 4 },
-    ],
-  },
-  {
-    suffix: "PLANTA",
-    hosts: ["dl385", "r630", "r620"],
-    vcenter: "vcsa02",
-    array: { name: "VSAN-01", model: "vSAN ESA (discos locais)", raid: "RAID 5 · FTT=1", bays: 18, filled: 15, kind: "SSD", sizeTb: 1.92 },
-    datastores: [
-      { name: "vsanDatastore-{S}", type: "vSAN", backing: "vSAN · 3 hosts · SSD 1,92 TB", capacityTb: 26 },
-      { name: "DS-{S}-LEGADO", type: "VMFS 5", backing: "Dell ME4024 · LUN 07 · iSCSI 10G", capacityTb: 6 },
-    ],
-    nfs: [{ name: "NFS-{S}-BACKUP", type: "NFS 4.1", backing: "QNAP TS-h1886 · /vmware", capacityTb: 32 }],
-  },
-];
-
-function buildCluster(site: Site, siteIndex: number): Cluster {
-  const plan = PLANS[siteIndex % PLANS.length];
-  const rand = rng(site.id * 3571 + 17);
-  const code = site.code.replace(/^BR-/, "");
-  const hosts: Host[] = plan.hosts.map((key, i) => {
-    const t = TEMPLATES[key];
-    const slots: DimmSlot[] = [];
-    for (let socket = 1; socket <= t.cpu.sockets; socket++) {
-      const letter = socket === 1 ? "A" : "B";
-      for (let n = 1; n <= t.memory.perSocket; n++) {
-        slots.push({ name: `${letter}${n}`, socket, sizeGb: n <= t.filledPerSocket ? t.moduleGb : null });
-      }
-    }
+/* A stored cluster with simulated usage, seeded by its id so the numbers stay put between visits. */
+export function toCluster(record: ClusterRecord, site: Site): Cluster {
+  const rand = rng(record.id * 3571 + 17);
+  const hosts: Host[] = record.document.hosts.map((h, i) => {
     const cpuUsage = 25 + rand() * 45;
     return {
-      id: `${site.id}-h${i + 1}`,
-      name: `esx${String(i + 1).padStart(2, "0")}-${code.toLowerCase()}.lhoist.local`,
-      vendor: t.vendor,
-      model: t.model,
-      serial: `${t.vendor === "Dell" ? "" : "CZ"}${Math.floor(rand() * 36 ** 6).toString(36).toUpperCase().padStart(7, "7")}`,
-      hypervisor: key === "r620" ? "ESXi 7.0 U3" : "ESXi 8.0 U3",
-      state: "connected",
-      vms: 8 + Math.floor(rand() * 18),
-      cpu: t.cpu,
-      memory: { type: t.memory.type, speedMts: t.memory.speedMts, form: t.memory.form, maxModuleGb: t.memory.maxModuleGb, slots },
+      ...h,
+      id: `${record.id}-h${i}`,
       cpuUsage,
       memUsage: 55 + rand() * 30,
       cpuHistory: Array.from({ length: 24 }, () => Math.max(5, Math.min(98, cpuUsage + (rand() - 0.5) * 30))),
     };
   });
-
-  const shared = [...plan.datastores, ...plan.nfs].map((d, i) => {
-    const used = d.capacityTb * (0.45 + rand() * 0.42);
+  const datastores: Datastore[] = record.document.datastores.map((d, i) => {
+    const used = d.capacityTb * (d.local ? 0.1 + rand() * 0.25 : 0.45 + rand() * 0.42);
     return {
       ...d,
-      id: `${site.id}-ds${i}`,
-      name: d.name.replace("{S}", code),
+      id: `${record.id}-ds${i}`,
       usedTb: used,
-      provisionedTb: used * (1.1 + rand() * 0.6),
-      hosts: hosts.length,
-      local: false,
+      provisionedTb: d.local ? used * 1.5 : used * (1.1 + rand() * 0.6),
+      hosts: d.local ? 1 : hosts.length,
     };
   });
-  const local = hosts.map((h, i) => ({
-    id: `${site.id}-local${i}`,
-    name: `local-${h.name.split(".")[0]}`,
-    type: "VMFS 6" as const,
-    backing: "BOSS / RAID 1 · 2× SSD 480 GB",
-    capacityTb: 0.44,
-    usedTb: 0.05 + rand() * 0.1,
-    provisionedTb: 0.1,
-    hosts: 1,
-    local: true,
-  }));
-
-  const bays: StorageArray["bays"] = Array.from({ length: plan.array.bays }, (_, i) => ({
-    slot: i,
-    state: i < plan.array.filled ? "ok" : "empty",
-    sizeTb: i < plan.array.filled ? plan.array.sizeTb : null,
-    kind: plan.array.kind,
-  }));
-
   return {
-    id: `cl-${site.id}`,
+    id: String(record.id),
+    record,
     siteId: site.id,
     siteCode: site.code,
     siteName: site.name,
-    name: `CL-${code}-${plan.suffix}`,
-    vcenter: `${plan.vcenter}-${code.toLowerCase()}.lhoist.local`,
+    name: record.name,
+    vcenter: record.vcenter ?? "—",
     hosts,
-    datastores: [...shared, ...local],
-    array: { name: plan.array.name, model: plan.array.model, raid: plan.array.raid, bays },
-    vcpus: Math.round(hosts.reduce((s, h) => s + threads(h.cpu), 0) * (1.3 + rand() * 0.8)),
-    haEnabled: true,
-    drs: siteIndex % 2 === 0 ? "Automático" : "Manual",
+    datastores,
+    array: record.document.array ?? { name: "—", model: "Sem storage compartilhado", raid: "—", bays: [] },
+    vcpus: record.document.vcpus ?? Math.round(hosts.reduce((s, h) => s + threads(h.cpu), 0) * 1.6),
+    haEnabled: record.ha_enabled,
+    drs: record.drs === "Automático" ? "Automático" : "Manual",
   };
-}
-
-export function buildClusters(sites: Site[]): Cluster[] {
-  return (sites.length ? sites : FALLBACK_SITES).map(buildCluster);
 }
 
 /* ---------- live simulation ---------- */

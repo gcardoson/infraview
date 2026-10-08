@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { AreaChart, ArcGauge } from "./charts";
-import { MEDIUM_SHORT, TOPOLOGIES } from "../topology/data";
+import { MEDIUM_SHORT, type SiteTopology } from "../topology/data";
 import { STATUS_LABEL, useTopologyStatus } from "../topology/status";
 import { type Health, KIND_LABEL, type Room, roomHealth, roomIssues, UNIT_LABEL, type UnitKind } from "./data";
 import { RackElevation } from "./RackElevation";
 import { METRICS, type MetricKey, type MetricSpec, metricSpec, type RoomTelemetry, useRoomTelemetry } from "./telemetry";
+import { EditActions } from "../components/EditActions";
+import { RoomForm } from "./RoomForm";
 import { useExplorer } from "./useExplorer";
 
 /* Room dashboard: environment gauges, 24h curves, presence/leak sensors, live events, cameras and racks. */
@@ -97,8 +99,7 @@ function groups(room: Room): Group[] {
 const DEVICE_KIND = { core: "Switch central", switch: "Switch", ap: "Access point", passive: "Passivo" } as const;
 
 /* The room's switches and APs as documented in Topologia, with their (simulated) status and uplinks. */
-function RoomNetwork({ room }: { room: Room }) {
-  const topology = TOPOLOGIES.find((t) => t.code === room.topology)!;
+function RoomNetwork({ room, topology }: { room: Room; topology: SiteTopology }) {
   const health = useTopologyStatus(topology);
   const to = (node?: string) => `/topologia?site=${topology.code}${node ? `&node=${node}` : ""}`;
   return (
@@ -157,16 +158,19 @@ function RoomNetwork({ room }: { room: Room }) {
 
 export function RoomPage() {
   const { roomId = "" } = useParams();
-  const { sites, explorer } = useExplorer();
+  const { inventory, explorer } = useExplorer();
+  const navigate = useNavigate();
+  const [editing, setEditing] = useState<"room" | "new" | null>(null);
   const site = explorer.find((s) => s.rooms.some((r) => r.id === roomId)) ?? null;
   const room = site?.rooms.find((r) => r.id === roomId) ?? null;
+  const topology = inventory.topologies.find((t) => t.siteId === site?.site.id);
   const telemetry = useRoomTelemetry(room);
   const now = useClock();
 
   if (!room || !site || !telemetry) {
     return (
       <div className="room-page">
-        <p className="muted">{sites.loading || !explorer.length ? "Carregando…" : "CPD ou rack não encontrado."}</p>
+        <p className="muted">{inventory.loading ? "Carregando…" : "CPD ou rack não encontrado."}</p>
         <Link to="/explorer" className="btn">
           Voltar ao mapa
         </Link>
@@ -208,6 +212,12 @@ export function RoomPage() {
           >
             Sensores simulados
           </span>
+          <EditActions
+            addLabel={`Novo CPD ou rack em ${site.site.code}`}
+            onAdd={() => setEditing("new")}
+            editLabel={`Editar ${room.kind === "cpd" ? "o CPD" : "o rack"} ${room.code}`}
+            onEdit={() => setEditing("room")}
+          />
           <Link to={`/explorer?site=${site.site.id}`} className="btn">
             ‹ Voltar ao mapa
           </Link>
@@ -295,7 +305,7 @@ export function RoomPage() {
             </section>
           </div>
 
-          {room.topology && <RoomNetwork room={room} />}
+          {topology && room.nodeId && <RoomNetwork room={room} topology={topology} />}
 
           <div className="room-groups">
             {groups(room).map((g) => (
@@ -370,6 +380,26 @@ export function RoomPage() {
           </ol>
         </aside>
       </div>
+
+      {editing && (
+        <RoomForm
+          room={editing === "room" ? room.record : null}
+          siteId={site.site.id}
+          sites={inventory.sites}
+          topologies={inventory.topologies}
+          onClose={() => setEditing(null)}
+          onSaved={(saved) => {
+            setEditing(null);
+            inventory.reload();
+            if (editing === "new") navigate(`/explorer/sala/${saved.id}`);
+          }}
+          onDeleted={() => {
+            setEditing(null);
+            inventory.reload();
+            navigate(`/explorer?site=${site.site.id}`);
+          }}
+        />
+      )}
     </div>
   );
 }
