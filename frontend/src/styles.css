@@ -25,6 +25,22 @@
 
 /* Literal colours of the dark theme, named so the light theme can redefine them (generated). */
 :root {
+  /* Interface accent (selection, tabs, buttons); the 'online' green stays --ok. */
+  --accent-dim: var(--ok-dim);
+  --accent-03: var(--c-a-46-230-160-0-03);
+  --accent-035: var(--c-a-46-230-160-0-035);
+  --accent-04: var(--c-a-46-230-160-0-04);
+  --accent-05: var(--c-a-46-230-160-0-05);
+  --accent-06: var(--c-a-46-230-160-0-06);
+  --accent-07: var(--c-a-46-230-160-0-07);
+  --accent-08: var(--c-a-46-230-160-0-08);
+  --accent-1: var(--c-a-46-230-160-0-1);
+  --accent-12: var(--c-a-46-230-160-0-12);
+  --accent-15: var(--c-a-46-230-160-0-15);
+  --accent-3: var(--c-a-46-230-160-0-3);
+  --accent-35: var(--c-a-46-230-160-0-35);
+  --accent-4: var(--c-a-46-230-160-0-4);
+  --accent-45: var(--c-a-46-230-160-0-45);
   --c-26323a: #26323a;
   --c-10171b: #10171b;
   --c-24463d: #24463d;
@@ -167,34 +183,51 @@
 
 /* Light theme: chosen with the sun/moon button in the top bar. */
 :root[data-theme="light"] {
-  --c-26323a: #c9d3d8;
-  --c-10171b: #eef2f3;
-  --c-24463d: #a9c9bd;
-  --c-121c1c: #f6f8f7;
-  --c-0a1116: #d6e6ef;
+  --c-26323a: #c9d2d8;
+  --c-10171b: #eef1f3;
+  --c-24463d: #a9bcc9;
+  --c-121c1c: #f6f7f8;
+  --c-0a1116: #d9e4ec;
   --c-1b3140: #a7c3d6;
   --chart-green: #0c9b68;
   --chart-blue: #2a7bd8;
   --chart-purple: #7b4fd6;
   --chart-amber: #b7780f;
   --chart-orange: #d8592a;
-  --bg: #f2f4f5;
-  --bg-2: #e9edef;
+  --bg: #f1f4f7;
+  --bg-2: #e8edf2;
   --panel: #ffffff;
-  --panel-2: #f4f6f7;
-  --line: #dde3e6;
-  --line-2: #c8d1d5;
-  --text: #182126;
-  --text-2: #4a5961;
-  --muted: #74828a;
+  --panel-2: #f5f7f9;
+  --line: #dbe1e7;
+  --line-2: #c3ccd5;
+  --text: #1d2b36;
+  --text-2: #47596a;
+  --muted: #748596;
   --ok: #0c9b68;
   --ok-dim: #5fc9a1;
   --warn: #b7780f;
   --crit: #d93a3a;
-  --idle: #93a0a7;
-  --accent: #0c9b68;
+  --idle: #97a6b3;
+  --accent: #0072a3;
+  --accent-strong: #005a82;
+  --accent-dim: #6fb3d2;
+  --accent-soft: #e1f1f8;
   color-scheme: light;
-  --c-121a1d: #e4e9eb;
+  --accent-03: rgba(0, 114, 163, 0.039);
+  --accent-035: rgba(0, 114, 163, 0.046);
+  --accent-04: rgba(0, 114, 163, 0.052);
+  --accent-05: rgba(0, 114, 163, 0.065);
+  --accent-06: rgba(0, 114, 163, 0.078);
+  --accent-07: rgba(0, 114, 163, 0.091);
+  --accent-08: rgba(0, 114, 163, 0.104);
+  --accent-1: rgba(0, 114, 163, 0.13);
+  --accent-12: rgba(0, 114, 163, 0.156);
+  --accent-15: rgba(0, 114, 163, 0.195);
+  --accent-3: rgba(0, 114, 163, 0.39);
+  --accent-35: rgba(0, 114, 163, 0.455);
+  --accent-4: rgba(0, 114, 163, 0.52);
+  --accent-45: rgba(0, 114, 163, 0.585);
+  --c-121a1d: #e4e8eb;
   --c-a-11-14-16-0-85: rgba(240, 242, 243, 0.85);
   --c-a-46-230-160-0-06: rgba(25, 205, 136, 0.084);
   --c-a-46-230-160-0-35: rgba(25, 205, 136, 0.35);
@@ -206,42 +239,42 @@
   --c-a-46-230-160-0-12: rgba(25, 205, 136, 0.168);
   --c-a-255-92-92-0-35: rgba(230, 0, 0, 0.35);
   --c-a-46-230-160-0-05: rgba(25, 205, 136, 0.07);
-  --c-a-154-167-174-0-14: rgba(85, 93, 97, 0.14);
-  --c-a-83-98-107-0-25: rgba(153, 162, 167, 0.25);
+  --c-a-154-167-174-0-14: rgba(80, 93, 102, 0.14);
+  --c-a-83-98-107-0-25: rgba(149, 162, 171, 0.25);
   --c-a-255-255-255-0-025: rgba(0, 0, 0, 0.017);
   --c-1a2226: #dbe0e3;
-  --c-33413f: #c1c9c8;
-  --c-121819: #e7ebec;
-  --c-26302f: #d1d7d6;
+  --c-33413f: #bec6cc;
+  --c-121819: #e7eaec;
+  --c-26302f: #cfd5d9;
   --c-0d1112: #eef0f1;
-  --c-1a2124: #dde1e3;
+  --c-1a2124: #dce1e4;
   --c-11171a: #e7eaec;
-  --c-080a0b: #f5f6f6;
+  --c-080a0b: #f4f6f7;
   --c-a-46-230-160-0-1: rgba(25, 205, 136, 0.14);
   --c-a-242-184-75-0-15: rgba(214, 145, 15, 0.21);
   --c-a-255-92-92-0-15: rgba(230, 0, 0, 0.21);
   --c-a-46-230-160-0-55: rgba(25, 205, 136, 0.55);
-  --c-a-0-0-0-0-6: rgba(16, 24, 32, 0.21);
-  --c-a-0-0-0-0-5: rgba(16, 24, 32, 0.175);
+  --c-a-0-0-0-0-6: rgba(16, 25, 32, 0.21);
+  --c-a-0-0-0-0-5: rgba(16, 25, 32, 0.175);
   --c-0b0e10: #f0f2f3;
   --c-a-46-230-160-0-04: rgba(25, 205, 136, 0.056);
-  --c-151d1e: #e3e8e8;
+  --c-151d1e: #e2e6e9;
   --c-1fae78: #1fae78;
   --c-a-242-184-75-0-45: rgba(214, 145, 15, 0.45);
   --c-a-255-92-92-0-55: rgba(230, 0, 0, 0.55);
-  --c-2f393f: #c3c9cd;
+  --c-2f393f: #c1c9cf;
   --c-a-215-222-226-0-55: rgba(0, 0, 0, 0.385);
-  --c-a-14-19-22-0-94: rgba(235, 238, 239, 0.94);
-  --c-a-0-0-0-0-55: rgba(16, 24, 32, 0.193);
-  --c-a-0-0-0-0-4: rgba(16, 24, 32, 0.14);
+  --c-a-14-19-22-0-94: rgba(235, 237, 239, 0.94);
+  --c-a-0-0-0-0-55: rgba(16, 25, 32, 0.193);
+  --c-a-0-0-0-0-4: rgba(16, 25, 32, 0.14);
   --c-5aa9ff: #006ee6;
   --c-b58cff: #5200e6;
   --c-a-242-184-75-0-08: rgba(214, 145, 15, 0.112);
   --c-a-255-255-255-0-015: rgba(0, 0, 0, 0.01);
-  --c-0b1013: #eef1f2;
+  --c-0b1013: #eef0f2;
   --c-a-90-169-255-0-28: rgba(0, 110, 230, 0.28);
   --c-a-90-169-255-0-45: rgba(0, 110, 230, 0.45);
-  --c-0d1215: #eceff0;
+  --c-0d1215: #eceef0;
   --c-a-255-255-255-0-012: rgba(0, 0, 0, 0.008);
   --c-a-46-230-160-0-15: rgba(25, 205, 136, 0.21);
   --c-ff7a59: #e62e00;
@@ -257,16 +290,16 @@
   --c-a-46-230-160-0-035: rgba(25, 205, 136, 0.049);
   --c-a-46-230-160-0-4: rgba(25, 205, 136, 0.4);
   --c-a-11-14-16-0-75: rgba(240, 242, 243, 0.75);
-  --c-1f272c: #d6dadd;
+  --c-1f272c: #d5dade;
   --c-a-11-14-16-0-8: rgba(240, 242, 243, 0.8);
   --c-ffffff: #000000;
-  --c-a-12-16-18-0-92: rgba(238, 241, 242, 0.92);
-  --c-11181b: #e6eaec;
+  --c-a-12-16-18-0-92: rgba(238, 240, 242, 0.92);
+  --c-11181b: #e6e9ec;
   --c-a-46-230-160-0-07: rgba(25, 205, 136, 0.098);
   --c-080b0d: #f3f5f6;
   --c-121a1e: #e3e8eb;
-  --c-3a4850: #afbdc5;
-  --c-7d8a91: #6e7b82;
+  --c-3a4850: #afbcc5;
+  --c-7d8a91: #6a7a86;
   --c-a-255-92-92-0-45: rgba(230, 0, 0, 0.45);
   --c-a-242-184-75-0-25: rgba(214, 145, 15, 0.25);
   --c-a-255-92-92-0-08: rgba(230, 0, 0, 0.112);
@@ -278,44 +311,44 @@
   --c-a-255-92-92-0-06: rgba(230, 0, 0, 0.084);
   --c-1d2529: #d8dde0;
   --c-1b2429: #d9dee1;
-  --c-2c383e: #c5cccf;
-  --c-10161a: #e7ebed;
+  --c-2c383e: #c4cbd0;
+  --c-10161a: #e7eaed;
   --c-a-46-230-160-0-8: rgba(25, 205, 136, 0.8);
   --c-a-90-169-255-0-8: rgba(0, 110, 230, 0.8);
   --c-000000: #ffffff;
   --c-a-46-230-160-0-03: rgba(25, 205, 136, 0.042);
   --c-4f8dff: #0051e6;
-  --c-8d9aa1: #5e6b72;
+  --c-8d9aa1: #5c6a74;
   --c-1d3f8f: #1d3f8f;
   --c-2c64c8: #295ebc;
   --c-9cc0ff: #0053e6;
   --c-a-255-92-92-0-7: rgba(230, 0, 0, 0.7);
   --c-11181c: #e5e9ec;
-  --c-2d3b43: #c0c9ce;
-  --c-0f1f1a: #e3edea;
+  --c-2d3b43: #c0c8ce;
+  --c-0f1f1a: #e3e9ed;
   --c-1f7a58: #1f7a58;
-  --c-1a1113: #ece7e8;
+  --c-1a1113: #e7eaec;
   --c-a-242-184-75-0-6: rgba(214, 145, 15, 0.6);
-  --c-1c2429: #d9dde0;
-  --c-33424a: #bac3c7;
-  --c-d7dee2: #1d2428;
-  --c-9aa7ae: #515e65;
-  --c-6b5557: #aa9496;
+  --c-1c2429: #d8dde1;
+  --c-33424a: #b9c2c8;
+  --c-d7dee2: #1d2328;
+  --c-9aa7ae: #505d66;
+  --c-6b5557: #93a1ab;
   --c-a-255-255-255-0-02: rgba(0, 0, 0, 0.014);
   --c-a-46-230-160-0-3: rgba(25, 205, 136, 0.3);
   --c-a-242-184-75-0-1: rgba(214, 145, 15, 0.14);
   --c-a-242-184-75-0-35: rgba(214, 145, 15, 0.35);
   --c-a-79-141-255-0-08: rgba(0, 81, 230, 0.112);
-  --c-a-141-154-161-0-08: rgba(98, 106, 110, 0.08);
+  --c-a-141-154-161-0-08: rgba(92, 106, 116, 0.08);
   --c-a-16-20-23-0-96: rgba(233, 236, 238, 0.96);
   --c-a-16-20-23-0-92: rgba(233, 236, 238, 0.92);
   --c-a-255-255-255-0-06: rgba(0, 0, 0, 0.042);
-  --c-3b4b48: #b4c4c1;
+  --c-3b4b48: #b4bdc4;
   --c-a-46-230-160-0-45: rgba(25, 205, 136, 0.45);
-  --c-12191c: #e5e9eb;
-  --c-4c5a61: #9eacb3;
-  --c-1f282d: #d5dadd;
-  --c-3b474d: #b2bec4;
+  --c-12191c: #e5e8eb;
+  --c-4c5a61: #9eaab3;
+  --c-1f282d: #d4dade;
+  --c-3b474d: #b2bcc4;
   --c-cfe0ff: #0051e6;
   --c-a-79-141-255-0-12: rgba(0, 81, 230, 0.168);
   --c-a-79-141-255-0-35: rgba(0, 81, 230, 0.35);
@@ -408,9 +441,9 @@ textarea {
 }
 
 .layer-tab.active {
-  color: var(--ok);
-  border-color: var(--ok-dim);
-  background: var(--c-a-46-230-160-0-06);
+  color: var(--accent);
+  border-color: var(--accent-dim);
+  background: var(--accent-06);
 }
 
 .layer-tab.disabled {
@@ -470,8 +503,8 @@ textarea {
   font-family: var(--mono);
   font-size: 1.6rem;
   font-weight: 600;
-  color: var(--ok);
-  text-shadow: 0 0 12px var(--c-a-46-230-160-0-35);
+  color: var(--accent);
+  text-shadow: 0 0 12px var(--accent-35);
 }
 
 /* ---------- common ---------- */
@@ -497,7 +530,7 @@ textarea {
   font-size: 0.68rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--ok);
+  color: var(--accent);
 }
 
 h1 {
@@ -581,9 +614,9 @@ h1 {
 }
 
 .btn.primary {
-  background: var(--c-a-46-230-160-0-12);
-  border-color: var(--ok-dim);
-  color: var(--ok);
+  background: var(--accent-12);
+  border-color: var(--accent-dim);
+  color: var(--accent);
 }
 
 .btn.danger {
@@ -655,7 +688,7 @@ select:focus,
 input:focus,
 textarea:focus {
   outline: none;
-  border-color: var(--ok-dim);
+  border-color: var(--accent-dim);
 }
 
 .wan-grid {
@@ -733,8 +766,8 @@ textarea:focus {
 }
 
 .link-item.selected {
-  border-color: var(--ok-dim);
-  background: var(--c-a-46-230-160-0-05);
+  border-color: var(--accent-dim);
+  background: var(--accent-05);
 }
 
 .link-main {
@@ -768,8 +801,8 @@ textarea:focus {
   text-transform: uppercase;
   padding: 0.1rem 0.4rem;
   border-radius: 2px;
-  background: var(--c-a-46-230-160-0-12);
-  color: var(--ok);
+  background: var(--accent-12);
+  color: var(--accent);
 }
 
 .tag.role-secondary {
@@ -857,12 +890,12 @@ textarea:focus {
 
 .edge-inner {
   fill: none;
-  stroke: var(--ok);
+  stroke: var(--accent);
   stroke-width: 1.5;
 }
 
 .edge-core {
-  fill: var(--ok);
+  fill: var(--accent);
 }
 
 .core-top {
@@ -964,8 +997,8 @@ textarea:focus {
 }
 
 .vlan-chip rect {
-  fill: var(--c-a-46-230-160-0-06);
-  stroke: var(--ok-dim);
+  fill: var(--accent-06);
+  stroke: var(--accent-dim);
 }
 
 .vlan-chip.off rect {
@@ -981,7 +1014,7 @@ textarea:focus {
   font-family: var(--mono);
   font-size: 10px;
   font-weight: 600;
-  fill: var(--ok);
+  fill: var(--accent);
 }
 
 .vlan-name {
@@ -1108,7 +1141,7 @@ td {
 }
 
 .log-tag {
-  color: var(--ok);
+  color: var(--accent);
 }
 
 .log-line.warn .log-tag,
@@ -1153,12 +1186,12 @@ td {
 }
 
 .spark-area {
-  fill: var(--c-a-46-230-160-0-1);
+  fill: var(--accent-1);
 }
 
 .spark-line {
   fill: none;
-  stroke: var(--ok);
+  stroke: var(--accent);
   stroke-width: 2;
 }
 
@@ -1401,7 +1434,7 @@ legend {
   font-size: 0.62rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--ok);
+  color: var(--accent);
   padding: 0 0.4rem;
 }
 
@@ -1629,7 +1662,7 @@ fieldset .btn.small {
   font-size: 0.68rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--ok);
+  color: var(--accent);
   text-align: left;
 }
 
@@ -1664,7 +1697,7 @@ fieldset .btn.small {
 
 .switch-row:hover td,
 .switch-row.selected td {
-  background: var(--c-a-46-230-160-0-04);
+  background: var(--accent-04);
 }
 
 .switch-row:hover td.col-name,
@@ -1904,7 +1937,7 @@ button.port-sq:hover,
 }
 
 .tt-card {
-  --tt-accent: var(--ok);
+  --tt-accent: var(--accent);
   width: 260px;
   padding: 0.7rem 0.8rem 0.6rem;
   border-radius: 6px;
@@ -2119,7 +2152,7 @@ button.port-sq:hover,
   gap: 0.75rem;
   padding: 0.75rem 0.85rem;
   border: 1px solid var(--line);
-  border-left: 2px solid var(--ok);
+  border-left: 2px solid var(--accent);
   border-radius: 4px;
   background: var(--c-a-255-255-255-0-015);
 }
@@ -2358,9 +2391,9 @@ button.port-sq:hover,
 }
 
 .srv-host.selected {
-  border-color: var(--ok-dim);
-  background: var(--c-a-46-230-160-0-05);
-  box-shadow: 0 0 0 1px var(--c-a-46-230-160-0-15), 0 0 18px -8px var(--ok);
+  border-color: var(--accent-dim);
+  background: var(--accent-05);
+  box-shadow: 0 0 0 1px var(--accent-15), 0 0 18px -8px var(--accent);
 }
 
 .srv-host-head {
@@ -2674,8 +2707,8 @@ button.port-sq:hover,
 }
 
 .srv-ds.selected {
-  border-color: var(--ok-dim);
-  background: var(--c-a-46-230-160-0-05);
+  border-color: var(--accent-dim);
+  background: var(--accent-05);
 }
 
 .srv-ds-head {
@@ -2773,7 +2806,7 @@ button.port-sq:hover,
 }
 
 .ex-search:focus-within {
-  border-color: var(--ok-dim);
+  border-color: var(--accent-dim);
 }
 
 .ex-search input {
@@ -2845,9 +2878,9 @@ button.port-sq:hover,
 }
 
 .ex-site.selected {
-  border-color: var(--ok-dim);
-  background: var(--c-a-46-230-160-0-08);
-  box-shadow: 0 0 16px -8px var(--ok);
+  border-color: var(--accent-dim);
+  background: var(--accent-08);
+  box-shadow: 0 0 16px -8px var(--accent);
 }
 
 .ex-site-name {
@@ -2929,7 +2962,7 @@ button.port-sq:hover,
   padding: 0.1rem 0.3rem;
   border-radius: 3px;
   border: 1px solid currentColor;
-  color: var(--ok);
+  color: var(--accent);
   flex: none;
 }
 
@@ -2944,7 +2977,7 @@ button.port-sq:hover,
 }
 
 .ex-unplaced a {
-  color: var(--ok);
+  color: var(--accent);
 }
 
 .ex-main {
@@ -2960,8 +2993,8 @@ button.port-sq:hover,
   isolation: isolate;
   background-color: var(--c-0a0d0f);
   background-image:
-    linear-gradient(var(--c-a-46-230-160-0-035) 1px, transparent 1px),
-    linear-gradient(90deg, var(--c-a-46-230-160-0-035) 1px, transparent 1px);
+    linear-gradient(var(--accent-035) 1px, transparent 1px),
+    linear-gradient(90deg, var(--accent-035) 1px, transparent 1px);
   background-size: 48px 48px;
   font-family: var(--sans);
 }
@@ -2976,7 +3009,7 @@ button.port-sq:hover,
   font-family: var(--mono);
   font-size: 0.62rem;
   letter-spacing: 0.12em;
-  color: var(--c-a-46-230-160-0-4);
+  color: var(--accent-4);
   pointer-events: none;
 }
 
@@ -3222,10 +3255,10 @@ button.port-sq:hover,
 }
 
 .ex-reset {
-  border-color: var(--ok-dim);
-  color: var(--ok);
+  border-color: var(--accent-dim);
+  color: var(--accent);
   background: var(--c-a-11-14-16-0-85);
-  box-shadow: 0 0 16px -6px var(--ok);
+  box-shadow: 0 0 16px -6px var(--accent);
   font-family: var(--mono);
   font-size: 0.7rem;
   letter-spacing: 0.1em;
@@ -3235,13 +3268,13 @@ button.port-sq:hover,
 .ex-card {
   position: absolute;
   z-index: 5;
-  border: 1px solid var(--c-a-46-230-160-0-35);
+  border: 1px solid var(--accent-35);
   border-radius: 10px;
   background: var(--c-a-12-16-18-0-92);
   backdrop-filter: blur(8px);
   box-shadow:
     0 18px 40px var(--c-a-0-0-0-0-55),
-    0 0 24px -12px var(--ok);
+    0 0 24px -12px var(--accent);
   padding: 1rem 1.1rem;
   animation: card-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -3267,7 +3300,7 @@ button.port-sq:hover,
   font-size: 0.6rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--ok);
+  color: var(--accent);
 }
 
 .ex-edit {
@@ -3332,8 +3365,8 @@ button.port-sq:hover,
 }
 
 .ex-node.selected {
-  border-color: var(--ok-dim);
-  background: var(--c-a-46-230-160-0-07);
+  border-color: var(--accent-dim);
+  background: var(--accent-07);
 }
 
 .ex-node-text {
@@ -3517,7 +3550,7 @@ button.port-sq:hover,
 }
 
 .room-crumbs a:hover {
-  color: var(--ok);
+  color: var(--accent);
 }
 
 .room-status {
@@ -3563,7 +3596,7 @@ button.port-sq:hover,
   font-size: 0.62rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--ok);
+  color: var(--accent);
 }
 
 .room-section-title > :last-child:not(:first-child) {
@@ -4261,8 +4294,8 @@ button.port-sq:hover,
 }
 
 .plant-tabs button.active {
-  background: var(--c-a-46-230-160-0-12);
-  color: var(--ok);
+  background: var(--accent-12);
+  color: var(--accent);
 }
 
 .topo-kpis {
@@ -4316,8 +4349,8 @@ button.port-sq:hover,
   border-radius: 4px;
   background-color: var(--c-0a0d0f);
   background-image:
-    linear-gradient(var(--c-a-46-230-160-0-03) 1px, transparent 1px),
-    linear-gradient(90deg, var(--c-a-46-230-160-0-03) 1px, transparent 1px);
+    linear-gradient(var(--accent-03) 1px, transparent 1px),
+    linear-gradient(90deg, var(--accent-03) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
@@ -4479,7 +4512,7 @@ button.port-sq:hover,
 
 .topo-node:hover .topo-frame,
 .topo-node.active .topo-frame {
-  stroke: var(--ok);
+  stroke: var(--accent);
 }
 
 .topo-node.offline .topo-frame {
@@ -4829,7 +4862,7 @@ button.port-sq:hover,
   padding: 0;
   border: 0;
   background: none;
-  color: var(--ok);
+  color: var(--accent);
   font-size: inherit;
   cursor: pointer;
 }
@@ -4894,9 +4927,9 @@ button.port-sq:hover,
   font-size: 0.6rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ok);
-  background: var(--c-a-46-230-160-0-1);
-  border: 1px solid var(--c-a-46-230-160-0-3);
+  color: var(--accent);
+  background: var(--accent-1);
+  border: 1px solid var(--accent-3);
   white-space: nowrap;
 }
 
@@ -4988,7 +5021,7 @@ button.port-sq:hover,
 
 .topo-table tbody tr:hover,
 .topo-table tbody tr.selected {
-  background: var(--c-a-46-230-160-0-05);
+  background: var(--accent-05);
 }
 
 .topo-end {
@@ -5645,8 +5678,8 @@ button.port-sq:hover,
 }
 
 .icon-action:hover:not(:disabled) {
-  border-color: var(--ok-dim);
-  color: var(--ok);
+  border-color: var(--accent-dim);
+  color: var(--accent);
 }
 
 .icon-action:disabled {
@@ -5750,9 +5783,9 @@ fieldset .hint {
 }
 
 .ve-tool.active {
-  border-color: var(--c-a-46-230-160-0-4);
-  background: var(--c-a-46-230-160-0-12);
-  color: var(--ok);
+  border-color: var(--accent-4);
+  background: var(--accent-12);
+  color: var(--accent);
 }
 
 .ve-tool:disabled {
@@ -5826,7 +5859,7 @@ fieldset .hint {
   font-size: 0.6rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--ok);
+  color: var(--accent);
 }
 
 .ve-stencil-item {
@@ -5844,7 +5877,7 @@ fieldset .hint {
 }
 
 .ve-stencil-item:hover {
-  border-color: var(--c-a-46-230-160-0-45);
+  border-color: var(--accent-45);
   color: var(--text);
 }
 
@@ -5981,11 +6014,11 @@ kbd {
 }
 
 .ve-grid-minor {
-  stroke: var(--c-a-46-230-160-0-035);
+  stroke: var(--accent-035);
 }
 
 .ve-grid-major {
-  stroke: var(--c-a-46-230-160-0-08);
+  stroke: var(--accent-08);
 }
 
 .ve-area {
@@ -6005,12 +6038,12 @@ kbd {
 }
 
 .ve-svg .topo-link.active .topo-port {
-  fill: var(--ok);
+  fill: var(--accent);
 }
 
 .ve-sel {
   fill: none;
-  stroke: var(--ok);
+  stroke: var(--accent);
   stroke-width: calc(var(--hs) * 1.2);
   stroke-dasharray: calc(var(--hs) * 4) calc(var(--hs) * 3);
   pointer-events: none;
@@ -6018,12 +6051,12 @@ kbd {
 
 .ve-handle {
   fill: var(--c-0a0d0f);
-  stroke: var(--ok);
+  stroke: var(--accent);
   stroke-width: calc(var(--hs) * 1.4);
 }
 
 .ve-handle.resize {
-  fill: var(--ok);
+  fill: var(--accent);
   cursor: nwse-resize;
 }
 
@@ -6046,7 +6079,7 @@ kbd {
 }
 
 .ve-handle.end {
-  fill: var(--ok);
+  fill: var(--accent);
   cursor: crosshair;
 }
 
@@ -6075,15 +6108,15 @@ kbd {
 }
 
 .ve-target {
-  fill: var(--c-a-46-230-160-0-08);
-  stroke: var(--ok);
+  fill: var(--accent-08);
+  stroke: var(--accent);
   stroke-width: calc(var(--hs) * 2);
   pointer-events: none;
 }
 
 .ve-wire {
   fill: none;
-  stroke: var(--ok);
+  stroke: var(--accent);
   stroke-width: calc(var(--hs) * 2);
   stroke-dasharray: calc(var(--hs) * 6) calc(var(--hs) * 4);
   pointer-events: none;
@@ -6195,7 +6228,7 @@ kbd {
 }
 
 .ve-node-links button:hover {
-  background: var(--c-a-46-230-160-0-08);
+  background: var(--accent-08);
 }
 
 .ve-list-empty {
@@ -6238,7 +6271,7 @@ kbd {
 }
 
 .topo-editor-list button:hover {
-  background: var(--c-a-46-230-160-0-08);
+  background: var(--accent-08);
 }
 
 .topo-editor-form .span {
@@ -6320,4 +6353,42 @@ kbd {
 :root[data-theme="light"] .topo-node.ap .topo-frame {
   fill: #ffffff;
   stroke: #9aa7ae;
+}
+
+/* Light theme buttons follow the vSphere/Clarity look: solid blue primary, blue outline secondary. */
+:root[data-theme="light"] .btn {
+  border-color: var(--accent);
+  background: var(--panel);
+  color: var(--accent);
+}
+
+:root[data-theme="light"] .btn:hover:not(:disabled) {
+  border-color: var(--accent-strong);
+  background: var(--accent-soft);
+}
+
+:root[data-theme="light"] .btn.primary {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+:root[data-theme="light"] .btn.primary:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+:root[data-theme="light"] .btn.ghost {
+  background: transparent;
+}
+
+:root[data-theme="light"] .btn.danger {
+  border-color: var(--crit);
+  color: var(--crit);
+}
+
+:root[data-theme="light"] .btn.danger:hover:not(:disabled) {
+  background: rgba(217, 58, 58, 0.08);
+}
+
+:root[data-theme="light"] .topbar {
+  background: rgba(255, 255, 255, 0.92);
 }

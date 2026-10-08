@@ -79,7 +79,7 @@ datastores e storage) e uso simulado, organizada em três colunas:
 cadastro com as VLANs listadas nos links de internet.
 
 **Tema claro e escuro.** O botão de Sol/Lua no canto superior direito alterna o portal entre o
-tema escuro (padrão) e o claro; a escolha fica salva no navegador. No tema claro o mapa do Explorer
+tema escuro (padrão) e o claro, azulado no estilo do vSphere Client; a escolha fica salva no navegador. No tema claro o mapa do Explorer
 usa o Esri Light Gray. As cores do CSS ficam em variáveis (`--c-*`) com um valor para cada tema.
 
 **Adicionar e editar.** Ao lado da etiqueta de dados simulados de cada página há dois botões: **+**
